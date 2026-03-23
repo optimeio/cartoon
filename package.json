@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "npm run install:backend",
     "install:frontend": "cd cartoon-reel-frontend && npm install",
     "install:backend": "cd cartoon-reel-backend && npm install",
     "install:all": "npm run install:frontend && npm run install:backend",
