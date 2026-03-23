@@ -1,0 +1,13 @@
+{
+  "name": "cartoon-reel-backend",
+  "version": "1.0.0",
+  "description": "CartoonReel backend - FFmpeg video merge server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["ffmpeg", "video", "cartoon", "reel"],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,357 @@
+{
+  "categories": [
+    {
+      "id": "cartoon",
+      "label": "Cartoon",
+      "emoji": "🦸"
+    },
+    {
+      "id": "nature",
+      "label": "Nature",
+      "emoji": "🌿"
+    },
+    {
+      "id": "turmeric",
+      "label": "Turmeric",
+      "emoji": "🌱🌱"
+    }
+  ],
+  "templates": [
+    {
+      "id": "shinchan",
+      "categoryId": "cartoon",
+      "name": "Shinchan",
+      "emoji": "👦",
+      "bg": "/assets/bg_shinchan.png",
+      "scenes": [
+        {
+          "type": "shin_run",
+          "duration": 6
+        },
+        {
+          "type": "shin_dance",
+          "duration": 6
+        },
+        {
+          "type": "shin_silly",
+          "duration": 6
+        },
+        {
+          "type": "shin_happy",
+          "duration": 6
+        },
+        {
+          "type": "shin_run",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#FF0000",
+        "#FFFF00",
+        "#FFC0CB"
+      ]
+    },
+    {
+      "id": "chota-bheem",
+      "categoryId": "cartoon",
+      "name": "Bheem",
+      "emoji": "🏋️",
+      "bg": "/assets/bg_bheem.png",
+      "scenes": [
+        {
+          "type": "bheem_power",
+          "duration": 6
+        },
+        {
+          "type": "bheem_friends",
+          "duration": 6
+        },
+        {
+          "type": "bheem_laddoo",
+          "duration": 6
+        },
+        {
+          "type": "bheem_victory",
+          "duration": 6
+        },
+        {
+          "type": "bheem_power",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#FF8C00",
+        "#FFD700",
+        "#8B4513"
+      ]
+    },
+    {
+      "id": "ben10",
+      "categoryId": "cartoon",
+      "name": "Ben 10",
+      "emoji": "⌚",
+      "bg": "/assets/bg_ben10.png",
+      "scenes": [
+        {
+          "type": "ben_omnitrix",
+          "duration": 6
+        },
+        {
+          "type": "ben_transform",
+          "duration": 6
+        },
+        {
+          "type": "ben_battle",
+          "duration": 6
+        },
+        {
+          "type": "ben_hero",
+          "duration": 6
+        },
+        {
+          "type": "ben_transform",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#00FF00",
+        "#000000",
+        "#FFFFFF"
+      ]
+    },
+    {
+      "id": "jackie",
+      "categoryId": "cartoon",
+      "name": "Jackie Chan",
+      "emoji": "🥋",
+      "bg": "/assets/bg_jackie.png",
+      "scenes": [
+        {
+          "type": "jackie_kick",
+          "duration": 6
+        },
+        {
+          "type": "jackie_dodge",
+          "duration": 6
+        },
+        {
+          "type": "jackie_combo",
+          "duration": 6
+        },
+        {
+          "type": "jackie_win",
+          "duration": 6
+        },
+        {
+          "type": "jackie_kick",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#FF4500",
+        "#000080",
+        "#FFFFFF"
+      ]
+    },
+    {
+      "id": "grass",
+      "categoryId": "nature",
+      "name": "Grass",
+      "emoji": "🌾",
+      "bg": "/assets/bg_grass.png",
+      "scenes": [
+        {
+          "type": "grass_sway",
+          "duration": 6
+        },
+        {
+          "type": "grass_butterfly",
+          "duration": 6
+        },
+        {
+          "type": "grass_breeze",
+          "duration": 6
+        },
+        {
+          "type": "grass_sunset",
+          "duration": 6
+        },
+        {
+          "type": "grass_sway",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#32CD32",
+        "#228B22",
+        "#00FF00"
+      ]
+    },
+    {
+      "id": "forest",
+      "categoryId": "nature",
+      "name": "Forest",
+      "emoji": "🌲",
+      "bg": "/assets/bg_forest.png",
+      "scenes": [
+        {
+          "type": "forest_canopy",
+          "duration": 6
+        },
+        {
+          "type": "forest_water",
+          "duration": 6
+        },
+        {
+          "type": "forest_birds",
+          "duration": 6
+        },
+        {
+          "type": "forest_mist",
+          "duration": 6
+        },
+        {
+          "type": "forest_canopy",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#006400",
+        "#2E8B57",
+        "#8FBC8F"
+      ]
+    },
+    {
+      "id": "turmeric",
+      "categoryId": "nature",
+      "name": "Turmeric",
+      "emoji": "🟨",
+      "bg": "/assets/bg_turmeric.png",
+      "scenes": [
+        {
+          "type": "turmeric_field",
+          "duration": 6
+        },
+        {
+          "type": "turmeric_harvest",
+          "duration": 6
+        },
+        {
+          "type": "turmeric_glow",
+          "duration": 6
+        },
+        {
+          "type": "turmeric_dusk",
+          "duration": 6
+        },
+        {
+          "type": "turmeric_field",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#FFD700",
+        "#FFA500",
+        "#FFFF00"
+      ]
+    },
+    {
+      "id": "chilli",
+      "categoryId": "nature",
+      "name": "Chilli",
+      "emoji": "🌶️",
+      "bg": "/assets/bg_chilli.png",
+      "scenes": [
+        {
+          "type": "chilli_garden",
+          "duration": 6
+        },
+        {
+          "type": "chilli_glow",
+          "duration": 6
+        },
+        {
+          "type": "chilli_rain",
+          "duration": 6
+        },
+        {
+          "type": "chilli_harvest",
+          "duration": 6
+        },
+        {
+          "type": "chilli_garden",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#FF0000",
+        "#8B0000",
+        "#DC143C"
+      ]
+    },
+    {
+      "id": "sambar",
+      "categoryId": "nature",
+      "name": "Sambar",
+      "emoji": "🍲",
+      "bg": "/assets/bg_sambar.png",
+      "scenes": [
+        {
+          "type": "sambar_cook",
+          "duration": 6
+        },
+        {
+          "type": "sambar_spice",
+          "duration": 6
+        },
+        {
+          "type": "sambar_steam",
+          "duration": 6
+        },
+        {
+          "type": "sambar_feast",
+          "duration": 6
+        },
+        {
+          "type": "sambar_cook",
+          "duration": 6
+        }
+      ],
+      "palette": [
+        "#D2691E",
+        "#CD853F",
+        "#A0522D"
+      ]
+    },
+    {
+      "id": "tpl_1774266145760",
+      "categoryId": "turmeric",
+      "name": "Turmeric",
+      "emoji": "⭐",
+      "bg": "http://localhost:4000/uploads/d86fe885-61c1-45ec-b956-60b1fea6e04d.png",
+      "isCustom": true,
+      "scenes": [
+        {
+          "type": "generic",
+          "duration": 3
+        },
+        {
+          "type": "generic",
+          "duration": 3
+        },
+        {
+          "type": "generic",
+          "duration": 3
+        },
+        {
+          "type": "generic",
+          "duration": 3
+        },
+        {
+          "type": "generic",
+          "duration": 3
+        }
+      ]
+    }
+  ]
+}
