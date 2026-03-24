@@ -42,7 +42,7 @@ const ease  = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const rand  = (seed, i) => (Math.sin(seed * 127.1 + i * 311.7) * 43758.5453) % 1;
 
-/* ─── Draw background image (static, uncropped with blur letterbox) ─── */
+/* ─── Draw background image (static, cover-fit) ─── */
 function drawBg(ctx, W, H, img) {
   if (!img || !img.complete || img.naturalWidth === 0) {
     ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); return;
@@ -52,21 +52,10 @@ function drawBg(ctx, W, H, img) {
   const nw = img.naturalWidth;
   const nh = img.naturalHeight;
 
-  // 1. Draw a blurred, zoomed version as a backdrop (fills screen)
+  // Cover-fit (fills entire screen)
   const coverR = Math.max(W / nw, H / nh);
-  const cw = nw * coverR;
-  const ch = nh * coverR;
-  const cx = (W - cw) / 2;
-  const cy = (H - ch) / 2;
-  
-  ctx.filter = 'blur(20px) brightness(0.7)';
-  ctx.drawImage(img, cx, cy, cw, ch);
-  
-  // 2. Draw the actual original image uncropped (contain-fit)
-  ctx.filter = 'none';
-  const containR = Math.min(W / nw, H / nh);
-  const dw = nw * containR;
-  const dh = nh * containR;
+  const dw = nw * coverR;
+  const dh = nh * coverR;
   const dx = (W - dw) / 2;
   const dy = (H - dh) / 2;
   
