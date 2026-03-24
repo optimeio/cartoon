@@ -1230,8 +1230,8 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
       const mW = mediaEl instanceof HTMLVideoElement ? mediaEl.videoWidth  : mediaEl.naturalWidth;
       const mH = mediaEl instanceof HTMLVideoElement ? mediaEl.videoHeight : mediaEl.naturalHeight;
 
-      // Contain-fit at scale 1 (Math.min instead of Math.max) to match the Crop modal perfectly
-      const baseFit = Math.min(W / mW, H / mH);
+      // Cover-fit at scale 1 (Math.max) to perfectly fill the reel frame vertically and horizontally
+      const baseFit = Math.max(W / mW, H / mH);
       const finalScale = baseFit * cropScale;
       const dw = mW * finalScale;
       const dh = mH * finalScale;

@@ -103,6 +103,19 @@ export function useReelGenerator() {
         }
       }
 
+      // ── Ensure custom media is fully loaded before fast-rendering ─
+      if (customMedia) {
+        setLoadingStep(2); // Still rendering logic
+        await new Promise((resolve) => {
+          const isVid = customMedia.type.startsWith('video/');
+          const el = document.createElement(isVid ? 'video' : 'img');
+          el.onloadeddata = el.onload = resolve;
+          el.onerror = resolve; // proceed anyway on error
+          el.src = URL.createObjectURL(customMedia);
+          if (isVid) el.load();
+        });
+      }
+
       // ── Build MediaRecorder stream ────────────────────
       const canvasStream = canvas.captureStream(FPS);
 
