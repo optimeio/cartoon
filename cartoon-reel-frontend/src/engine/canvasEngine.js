@@ -110,15 +110,33 @@ function drawCinematicText(ctx, W, H, text, now) {
   const currentText = segments[segIdx];
   const isLast      = segIdx === segments.length - 1;
 
+  // ── Slide-in fade animation (no box) ────────────────────────────────
+  const FADE  = Math.min(0.25, segDur * 0.3);
+  let slideY  = 0;
+  let alpha   = 1;
+  if (sceneT < FADE / segDur) {
+    const t = sceneT / (FADE / segDur);
+    slideY  = (1 - easeOut(t)) * (H * 0.06);
+    alpha   = easeOut(t);
+  } else if (sceneT > 1 - FADE / segDur) {
+    const t = (sceneT - (1 - FADE / segDur)) / (FADE / segDur);
+    alpha   = 1 - t;
+    slideY  = t * -(H * 0.03);
+  }
+
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.translate(0, slideY);
+
   // ── Font setup ──────────────────────────────────────────────────────
-  const fs = Math.max(20, Math.min(W * 0.058, 36));
-  ctx.font = `700 ${fs}px 'Outfit',sans-serif`;
+  const fs = Math.max(22, Math.min(W * 0.065, 40));
+  ctx.font = `900 ${fs}px 'Outfit',sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // ── Word-wrap into lines (max 80% canvas width) ──────────────────────
-  const maxW = W * 0.80;
-  const lh   = fs * 1.45;
+  // ── Word-wrap into lines (max 82% canvas width) ──────────────────────
+  const maxW = W * 0.82;
+  const lh   = fs * 1.5;
   const words = currentText.split(' ');
   const lines = [];
   let cur = '';
@@ -129,51 +147,8 @@ function drawCinematicText(ctx, W, H, text, now) {
   });
   if (cur) lines.push(cur);
 
-  const totalTextH = lines.length * lh;
-  const padX = W * 0.06;
-  const padY = fs * 0.7;
-
-  // ── Fixed position: Centered prominently ─────────
-  const boxH  = totalTextH + padY * 2;
-  const boxY  = H * 0.50 - boxH / 2;   // anchored at 50% dead center
-  const boxX  = padX;
-  const boxW  = W - padX * 2;
-
-  // ── Slide-in from bottom on segment enter, hold, slide-out at exit ───
-  const FADE  = Math.min(0.25, segDur * 0.3);
-  let slideY  = 0;
-  let alpha   = 1;
-  if (sceneT < FADE / segDur) {
-    // First 25% of segment: slide in
-    const t = sceneT / (FADE / segDur);
-    slideY  = (1 - easeOut(t)) * (H * 0.06);
-    alpha   = easeOut(t);
-  } else if (sceneT > 1 - FADE / segDur) {
-    // Last 25%: fade out
-    const t = (sceneT - (1 - FADE / segDur)) / (FADE / segDur);
-    alpha   = 1 - t;
-    slideY  = t * -(H * 0.03);
-  }
-
-  ctx.save();
-  ctx.globalAlpha = clamp(alpha, 0, 1);
-  ctx.translate(0, slideY);
-
-  // ── Frosted glass pill background ─────────────────────────────────────
-  const r = Math.min(14, boxH / 2);
-  ctx.save();
-  ctx.fillStyle = isLast ? 'rgba(120,50,255,0.72)' : 'rgba(0,0,0,0.62)';
-  rr(ctx, boxX, boxY, boxW, boxH, r);
-  ctx.fill();
-
-  // Subtle top edge highlight (glass effect)
-  const shine = ctx.createLinearGradient(0, boxY, 0, boxY + boxH * 0.5);
-  shine.addColorStop(0, 'rgba(255,255,255,0.12)');
-  shine.addColorStop(1, 'transparent');
-  ctx.fillStyle = shine;
-  rr(ctx, boxX, boxY, boxW, boxH * 0.5, r);
-  ctx.fill();
-  ctx.restore();
+  // ── Text anchored in upper-center of canvas ──────────────────────────
+  const textCenterY = H * 0.28;
 
   // ── Segment counter dots (pagination) ─────────────────────────────────
   if (segments.length > 1) {
@@ -181,24 +156,57 @@ function drawCinematicText(ctx, W, H, text, now) {
     const dotGap = dotR * 3.5;
     const totalDotW = segments.length * dotGap - dotGap + dotR * 2;
     let dx = W / 2 - totalDotW / 2 + dotR;
-    const dy = boxY - dotR * 2.5;
+    const dotY = textCenterY - lines.length * lh * 0.5 - dotR * 3.5;
     for (let d = 0; d < segments.length; d++) {
       ctx.beginPath();
-      ctx.arc(dx, dy, dotR, 0, Math.PI * 2);
-      ctx.fillStyle = d === segIdx ? '#fff' : 'rgba(255,255,255,0.3)';
+      ctx.arc(dx, dotY, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = d === segIdx ? (isLast ? '#FFD700' : '#fff') : 'rgba(255,255,255,0.3)';
       ctx.fill();
       dx += dotGap;
     }
   }
 
-  // ── Draw text lines ────────────────────────────────────────────────────
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur  = 8;
-  ctx.fillStyle   = isLast ? '#FFD700' : '#ffffff';
+  // ── Draw text — cinematic, bare, no box ──────────────────────────────
+  const totalTextH = lines.length * lh;
+  const textStartY = textCenterY - totalTextH / 2 + lh / 2;
 
-  const textStartY = boxY + padY + lh / 2;
   lines.forEach((l, i) => {
-    ctx.fillText(l, W / 2, textStartY + i * lh);
+    const y = textStartY + i * lh;
+
+    // Multi-layer shadow for dark backdrop readability
+    ctx.save();
+    ctx.font = `900 ${fs}px 'Outfit',sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Outer halo
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur  = 28;
+    ctx.fillStyle   = 'rgba(0,0,0,0.0)'; // transparent to just cast shadow
+    ctx.fillText(l, W / 2, y);
+
+    // Actual text
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur  = 12;
+    if (isLast) {
+      // Last segment: golden gradient text
+      const grd = ctx.createLinearGradient(0, y - fs, 0, y + fs);
+      grd.addColorStop(0, '#FFE066');
+      grd.addColorStop(0.5, '#FFD700');
+      grd.addColorStop(1, '#FFA500');
+      ctx.fillStyle = grd;
+    } else {
+      ctx.fillStyle = '#ffffff';
+    }
+    ctx.fillText(l, W / 2, y);
+
+    // Stroke outline for crisp readability
+    ctx.lineWidth   = fs * 0.08;
+    ctx.strokeStyle = isLast ? 'rgba(120,60,0,0.7)' : 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur  = 0;
+    ctx.strokeText(l, W / 2, y);
+
+    ctx.restore();
   });
 
   ctx.restore();
@@ -218,6 +226,272 @@ function rr(ctx, x, y, w, h, r) {
   ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
   ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+/* ═══════════════════ SECTIONS TEXT SYSTEM ══════════════════
+ * Three-zone cinematic text:
+ *   Title      → top bar, highlighted, full duration
+ *   Content    → center, segmented story, 1s–12s
+ *   Conclusion → bottom, slides in at 11s
+ * ═══════════════════════════════════════════════════════════ */
+
+/** Convert #rrggbb to rgba() string */
+function hexToRgba(hex, alpha) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!r) return `rgba(255,255,255,${alpha})`;
+  return `rgba(${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)},${alpha})`;
+}
+
+/** Build canvas font string from theme + size + language */
+function getFontStr(theme, size, lang) {
+  const langStack = lang === 'ta'
+    ? "'Noto Sans Tamil', Latha, "
+    : lang === 'hi'
+      ? "'Noto Sans Devanagari', Mangal, "
+      : '';
+  switch (theme) {
+    case 'bold':    return `900 ${size}px ${langStack}'Outfit', sans-serif`;
+    case 'elegant': return `italic 600 ${size}px ${langStack}Georgia, serif`;
+    case 'classic': return `600 ${size}px ${langStack}Georgia, serif`;
+    default:        return `700 ${size}px ${langStack}'Outfit', sans-serif`;
+  }
+}
+
+/** Word-wrap text into lines that fit maxWidth */
+function wrapTextLines(ctx, text, maxWidth) {
+  if (!text) return [];
+  const words = text.trim().split(/\s+/);
+  const lines = [];
+  let cur = '';
+  words.forEach(w => {
+    const test = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(test).width > maxWidth) { if (cur) lines.push(cur); cur = w; }
+    else cur = test;
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+/** X anchor from alignment */
+function getAlignX(align, W) {
+  if (align === 'left')  return W * 0.07;
+  if (align === 'right') return W * 0.93;
+  return W / 2;
+}
+
+/* ── Title Section (top, entire video) ─────────────────── */
+function drawTitleSection(ctx, W, H, sec, now, lang) {
+  const txt = (sec?.text || '').trim();
+  if (!txt) return;
+
+  const color   = sec.color || '#FFD700';
+  const align   = sec.align || 'center';
+  const font    = sec.font  || 'bold';
+
+  // Slide-in from top
+  let alpha = 1, slideY = 0;
+  if (now < 0.65) {
+    const t = now / 0.65;
+    alpha  = easeOut(t);
+    slideY = (1 - easeOut(t)) * (-H * 0.045);
+  }
+
+  const fs      = Math.max(20, Math.min(W * 0.062, 38));
+  const lh      = fs * 1.38;
+  const maxW    = W * 0.86;
+  const anchorY = H * 0.11;
+
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.translate(0, slideY);
+  ctx.font = getFontStr(font, fs, lang);
+  ctx.textAlign    = align;
+  ctx.textBaseline = 'middle';
+  const textX  = getAlignX(align, W);
+  const lines  = wrapTextLines(ctx, txt, maxW);
+  const totalH = lines.length * lh;
+  const padX   = W * 0.05;
+  const padY   = fs * 0.38;
+  const boxTop = anchorY - totalH / 2 - padY;
+  const boxH   = totalH + padY * 2;
+
+  // Highlight panel
+  rr(ctx, padX, boxTop, W - padX * 2, boxH, 10);
+  ctx.fillStyle = hexToRgba(color, 0.13);
+  ctx.fill();
+
+  // Left accent bar
+  ctx.fillStyle   = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur  = 14;
+  ctx.fillRect(padX, boxTop, 4, boxH);
+  ctx.shadowBlur = 0;
+
+  // Text
+  lines.forEach((line, i) => {
+    const y = anchorY - totalH / 2 + lh / 2 + i * lh;
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur  = 16;
+    ctx.fillStyle   = color;
+    ctx.fillText(line, textX, y);
+    ctx.shadowBlur  = 0;
+    ctx.lineWidth   = Math.max(1, fs * 0.065);
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.strokeText(line, textX, y);
+  });
+  ctx.restore();
+}
+
+/* ── Content Section (center, segmented 1s–12s) ─────────── */
+function drawContentSection(ctx, W, H, sec, now, lang) {
+  const txt = (sec?.text || '').trim();
+  if (!txt) return;
+
+  const START = 0.8, END = 12;
+  if (now < START || now >= END) return;
+
+  const color = sec.color || '#FFFFFF';
+  const align = sec.align || 'center';
+  const font  = sec.font  || 'modern';
+
+  const relNow  = now - START;
+  const relDur  = END - START;
+  const segs    = segmentText(txt);
+  if (!segs.length) return;
+
+  const segDur  = relDur / segs.length;
+  let segIdx    = Math.floor(relNow / segDur);
+  if (segIdx >= segs.length) segIdx = segs.length - 1;
+  const sceneT  = (relNow % segDur) / segDur;
+
+  // Fade in/out
+  const FADE  = 0.25;
+  let alpha   = 1, slideY = 0;
+  if (sceneT < FADE) {
+    const t = sceneT / FADE;
+    alpha  = easeOut(t); slideY = (1 - easeOut(t)) * (H * 0.035);
+  } else if (sceneT > 1 - FADE) {
+    const t = (sceneT - (1 - FADE)) / FADE;
+    alpha  = 1 - t; slideY = -t * (H * 0.02);
+  }
+
+  const fs      = Math.max(20, Math.min(W * 0.058, 36));
+  const lh      = fs * 1.52;
+  const maxW    = W * 0.84;
+  const anchorY = H * 0.47;
+
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.translate(0, slideY);
+  ctx.font = getFontStr(font, fs, lang);
+  ctx.textAlign    = align;
+  ctx.textBaseline = 'middle';
+  const textX  = getAlignX(align, W);
+  const lines  = wrapTextLines(ctx, segs[segIdx], maxW);
+  const totalH = lines.length * lh;
+
+  // Pagination dots
+  if (segs.length > 1) {
+    const dotR = 3, dotGap = dotR * 3.5;
+    const dotTotalW = segs.length * dotGap - dotGap + dotR * 2;
+    let dx = W / 2 - dotTotalW / 2 + dotR;
+    const dotY = anchorY - totalH / 2 - dotR * 4;
+    for (let d = 0; d < segs.length; d++) {
+      ctx.beginPath();
+      ctx.arc(dx, dotY, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = d === segIdx ? hexToRgba(color, 0.9) : 'rgba(255,255,255,0.22)';
+      ctx.fill();
+      dx += dotGap;
+    }
+  }
+
+  // Text
+  lines.forEach((line, i) => {
+    const y = anchorY - totalH / 2 + lh / 2 + i * lh;
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur  = 18;
+    ctx.fillStyle   = color;
+    ctx.fillText(line, textX, y);
+    ctx.shadowBlur  = 0;
+    ctx.lineWidth   = Math.max(1, fs * 0.07);
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.strokeText(line, textX, y);
+  });
+  ctx.restore();
+}
+
+/* ── Conclusion Section (bottom, slides in at 11s) ─────── */
+function drawConclusionSection(ctx, W, H, sec, now, lang) {
+  const txt = (sec?.text || '').trim();
+  if (!txt || now < 11) return;
+
+  const color   = sec.color || '#C084FC';
+  const align   = sec.align || 'center';
+  const font    = sec.font  || 'bold';
+
+  // Slide-in from bottom
+  const t      = clamp((now - 11) / 0.9, 0, 1);
+  const alpha  = easeOut(t);
+  const slideY = (1 - easeOut(t)) * (H * 0.05);
+
+  const fs      = Math.max(18, Math.min(W * 0.056, 34));
+  const lh      = fs * 1.45;
+  const maxW    = W * 0.86;
+  const anchorY = H * 0.80;
+
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.translate(0, slideY);
+  ctx.font = getFontStr(font, fs, lang);
+  ctx.textAlign    = align;
+  ctx.textBaseline = 'middle';
+  const textX  = getAlignX(align, W);
+  const lines  = wrapTextLines(ctx, txt, maxW);
+  const totalH = lines.length * lh;
+  const padX   = W * 0.05;
+  const padY   = fs * 0.4;
+  const boxTop = anchorY - totalH / 2 - padY;
+  const boxH   = totalH + padY * 2;
+
+  // Gradient background
+  const grd = ctx.createLinearGradient(padX, boxTop, W - padX, boxTop + boxH);
+  grd.addColorStop(0, hexToRgba(color, 0.2));
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  rr(ctx, padX, boxTop, W - padX * 2, boxH, 10);
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  // Bottom accent bar
+  ctx.fillStyle   = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur  = 12;
+  ctx.fillRect(padX, boxTop + boxH - 4, W - padX * 2, 4);
+  ctx.shadowBlur = 0;
+
+  // Text with white→color gradient fill
+  lines.forEach((line, i) => {
+    const y = anchorY - totalH / 2 + lh / 2 + i * lh;
+    const tg = ctx.createLinearGradient(textX - 80, y - fs * 0.5, textX + 80, y + fs * 0.5);
+    tg.addColorStop(0, '#fff');
+    tg.addColorStop(0.5, color);
+    tg.addColorStop(1, '#fff');
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur  = 14;
+    ctx.fillStyle   = tg;
+    ctx.fillText(line, textX, y);
+    ctx.shadowBlur  = 0;
+    ctx.lineWidth   = Math.max(1, fs * 0.065);
+    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+    ctx.strokeText(line, textX, y);
+  });
+  ctx.restore();
+}
+
+/* ── Dispatcher ─────────────────────────────────────────── */
+function drawSections(ctx, W, H, sections, now, lang) {
+  if (sections.title)      drawTitleSection    (ctx, W, H, sections.title,      now, lang || 'en');
+  if (sections.content)    drawContentSection  (ctx, W, H, sections.content,    now, lang || 'en');
+  if (sections.conclusion) drawConclusionSection(ctx, W, H, sections.conclusion, now, lang || 'en');
 }
 
 /* ─── Reusable overlay effects ─────────────────────────── */
@@ -691,6 +965,110 @@ const KB_MODE = ['zoom', 'zoom-out', 'pan-r', 'pan-l'];
 // Cache maps for dynamic user blobs so canvas doesn't stutter building DOM images
 const kb_custom_bg_cache = {};
 const custom_sprite_cache = {};
+const custom_media_cache  = {}; // { key: HTMLImageElement | HTMLVideoElement }
+
+/* ── Hand gesture pointing animation ── */
+function drawHandGesture(ctx, W, H, now, animationEnabled) {
+  if (!animationEnabled) return;
+
+  // Gentle hover bob
+  const bob = Math.sin(now * Math.PI * 2.5) * (H * 0.008);
+  // Pointing arm oscillation — tip moves toward text area (upper-center)
+  const pointSwing = Math.sin(now * Math.PI * 1.8) * 0.12;
+  // Finger wag for emphasis
+  const fingerWag  = Math.sin(now * Math.PI * 5) * 0.08;
+
+  // Anchor: bottom-right quadrant of canvas
+  const anchorX = W * 0.72;
+  const anchorY = H * 0.78 + bob;
+
+  // Arm length
+  const armLen = H * 0.22;
+
+  // Pointing direction: upper-left toward text area (≈ 30% height)
+  const baseAngle = -Math.PI * 0.55; // roughly upper-left
+  const angle     = baseAngle + pointSwing;
+
+  const elbowX = anchorX + Math.cos(angle + 0.4) * armLen * 0.48;
+  const elbowY = anchorY + Math.sin(angle + 0.4) * armLen * 0.48;
+  const handX  = anchorX + Math.cos(angle) * armLen;
+  const handY  = anchorY + Math.sin(angle) * armLen;
+
+  ctx.save();
+
+  // ── Arm (upper + lower) ──────────────────────────────────────────────
+  ctx.lineCap    = 'round';
+  ctx.lineJoin   = 'round';
+
+  // Upper arm
+  ctx.beginPath();
+  ctx.moveTo(anchorX, anchorY);
+  ctx.lineTo(elbowX, elbowY);
+  ctx.strokeStyle = 'rgba(255,200,110,0.92)';
+  ctx.lineWidth   = W * 0.055;
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur  = 10;
+  ctx.stroke();
+
+  // Lower arm
+  ctx.beginPath();
+  ctx.moveTo(elbowX, elbowY);
+  ctx.lineTo(handX, handY);
+  ctx.strokeStyle = 'rgba(255,200,110,0.92)';
+  ctx.lineWidth   = W * 0.048;
+  ctx.stroke();
+
+  // ── Hand circle ─────────────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.arc(handX, handY, W * 0.045, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,210,130,0.95)';
+  ctx.shadowBlur = 14;
+  ctx.fill();
+
+  // ── Pointing finger ──────────────────────────────────────────────────
+  const fingerAngle = angle + fingerWag;
+  const fingerLen   = W * 0.08;
+  const fingerTipX  = handX + Math.cos(fingerAngle) * fingerLen;
+  const fingerTipY  = handY + Math.sin(fingerAngle) * fingerLen;
+
+  ctx.beginPath();
+  ctx.moveTo(handX, handY);
+  ctx.lineTo(fingerTipX, fingerTipY);
+  ctx.strokeStyle = 'rgba(255,210,130,0.98)';
+  ctx.lineWidth   = W * 0.028;
+  ctx.shadowBlur  = 8;
+  ctx.stroke();
+
+  // Fingertip dot glow
+  ctx.beginPath();
+  ctx.arc(fingerTipX, fingerTipY, W * 0.018, 0, Math.PI * 2);
+  const glow = ctx.createRadialGradient(fingerTipX, fingerTipY, 0, fingerTipX, fingerTipY, W * 0.032);
+  glow.addColorStop(0, 'rgba(255,255,200,0.95)');
+  glow.addColorStop(1, 'rgba(255,200,80,0)');
+  ctx.fillStyle   = glow;
+  ctx.shadowColor = 'rgba(255,230,100,0.8)';
+  ctx.shadowBlur  = 18;
+  ctx.fill();
+
+  // ── Small animated dotted trail from finger to text area ─────────────
+  const trailSteps = 5;
+  for (let i = 0; i < trailSteps; i++) {
+    const frac  = (i + 1) / (trailSteps + 1);
+    const tx    = fingerTipX + (W * 0.5 - fingerTipX) * frac;
+    const ty    = fingerTipY + (H * 0.28 - fingerTipY) * frac;
+    const pulse = Math.abs(Math.sin(now * Math.PI * 3 - i * 0.6));
+    ctx.beginPath();
+    ctx.arc(tx, ty, W * 0.008 * (1 - frac * 0.5), 0, Math.PI * 2);
+    ctx.fillStyle   = `rgba(255,230,100,${pulse * 0.7})`;
+    ctx.shadowColor = 'rgba(255,200,50,0.6)';
+    ctx.shadowBlur  = 10;
+    ctx.globalAlpha = 0.6 * (1 - frac * 0.4);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
 
 /* ── CHARACTER SETTINGS ── */
 function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled = true) {
@@ -719,60 +1097,37 @@ function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites,
     sprite = getImage(`${charKey}_${frameIdx}`);
   }
 
-  // Motion maths — only when animation is ON
-  const bounceY     = animationEnabled ? Math.sin(now * Math.PI * 8) * (H * 0.015) : 0;
-  const scaleSquash = animationEnabled ? 1 + Math.sin(now * Math.PI * 4) * 0.025  : 1;
-  const rotAnim     = animationEnabled ? Math.sin(now * Math.PI * 2) * 0.035       : 0;
+  // Gentle idle bob + breathe — character stays anchored bottom-right
+  const bobY        = animationEnabled ? Math.sin(now * Math.PI * 2.5) * (H * 0.012) : 0;
+  const breathScale = animationEnabled ? 1 + Math.sin(now * Math.PI * 1.2) * 0.018   : 1;
 
-  let translateX = 0;
-  let alpha      = 1;
-  let scalePush  = 1;
+  // Position: bottom-right, slightly inset
+  const charCX = W * 0.72;
+  const charCY = H * 0.78 + bobY;
 
-  if (animationEnabled) {
-    if (now < 3) {
-      // Enter from left
-      const p = now / 3;
-      const easeP = 1 - Math.pow(1 - p, 4);
-      translateX = lerp(-W, 0, easeP);
-    } else if (now < 6) {
-      translateX = 0;
-    } else if (now < 9) {
-      // Micro side motion
-      const p = (now - 6) / 3;
-      translateX = Math.sin(p * Math.PI * 4) * (W * 0.05);
-    } else if (now < 12) {
-      // Zoom push in
-      translateX = 0;
-      scalePush  = 1.15;
-    } else {
-      // Exit right with fade
-      const p = (now - 12) / 3;
-      translateX = lerp(0, W * 0.45, Math.pow(p, 2));
-      alpha      = lerp(1, 0, p * 1.5);
-    }
-  }
-
-  // Draw
+  // Draw character sprite
   ctx.save();
-  ctx.translate(W / 2 + translateX, H / 2 + bounceY + (H * 0.1));
-  ctx.scale(scaleSquash * scalePush, scaleSquash * scalePush);
-  ctx.rotate(rotAnim);
-  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.translate(charCX, charCY);
+  ctx.scale(breathScale, breathScale);
+  ctx.globalAlpha = 1;
 
   if (sprite && sprite.complete && sprite.naturalWidth > 0) {
-    const sh = H * 0.55;
+    const sh = H * 0.38; // smaller — just lower body visible
     const sw = sprite.width * (sh / sprite.height);
     ctx.drawImage(sprite, -sw / 2, -sh / 2, sw, sh);
   } else {
     // Loading placeholder
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    const sh = H * 0.55; const sw = sh * 0.6;
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    const sh = H * 0.38; const sw = sh * 0.6;
     ctx.fillRect(-sw/2, -sh/2, sw, sh);
   }
   ctx.restore();
+
+  // Draw the animated hand gesture pointing toward text
+  drawHandGesture(ctx, W, H, now, animationEnabled);
 }
 
-export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true) {
+export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en') {
   const ctx = canvas.getContext('2d', { alpha: false });
   const W = canvas.width, H = canvas.height;
   const sceneList = template.scenes || Array(5).fill({ type: 'generic', duration: 3 });
@@ -809,10 +1164,63 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   // Ken Burns mode cycles through scenes
   const kbMode = KB_MODE[sceneIdx % KB_MODE.length];
 
-  // 1. Draw Background Parallax
+  // ── 1. Draw Background ─────────────────────────────────────────────
   ctx.save();
-  // We use sceneT relative to 30s timeline if requested, but sceneT gives smooth intro/outro per scene shot
-  drawBg(ctx, W, H, img, sceneT, kbMode);
+
+  if (customMedia) {
+    // User-uploaded custom background (image or video)
+    const cacheKey = customMedia.name + '|' + customMedia.size;
+    let mediaEl = custom_media_cache[cacheKey];
+
+    if (!mediaEl) {
+      const mediaType = customMedia.type.startsWith('video/') ? 'video' : 'image';
+      if (mediaType === 'video') {
+        mediaEl = document.createElement('video');
+        mediaEl.src = URL.createObjectURL(customMedia);
+        mediaEl.loop = true;
+        mediaEl.muted = true;
+        mediaEl.playsInline = true;
+        mediaEl.play().catch(() => {});
+      } else {
+        mediaEl = new Image();
+        mediaEl.src = URL.createObjectURL(customMedia);
+      }
+      custom_media_cache[cacheKey] = mediaEl;
+    }
+
+    // Draw custom media with user crop/position applied
+    const cropX     = customMediaCrop?.x ?? 0;
+    const cropY     = customMediaCrop?.y ?? 0;
+    const cropScale = customMediaCrop?.scale ?? 1;
+
+    const isReady = mediaEl instanceof HTMLVideoElement
+      ? mediaEl.readyState >= 2
+      : (mediaEl.complete && mediaEl.naturalWidth > 0);
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, W, H);
+
+    if (isReady) {
+      const mW = mediaEl instanceof HTMLVideoElement ? mediaEl.videoWidth  : mediaEl.naturalWidth;
+      const mH = mediaEl instanceof HTMLVideoElement ? mediaEl.videoHeight : mediaEl.naturalHeight;
+
+      // Cover-fit at scale 1, then apply user scale + position centered
+      const baseFit = Math.max(W / mW, H / mH);
+      const finalScale = baseFit * cropScale;
+      const dw = mW * finalScale;
+      const dh = mH * finalScale;
+      const dx = (W - dw) / 2 + cropX;
+      const dy = (H - dh) / 2 + cropY;
+
+      ctx.drawImage(mediaEl, dx, dy, dw, dh);
+    }
+
+    // Subtle darkening overlay so text/characters remain readable
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    drawBg(ctx, W, H, img, sceneT, kbMode);
+  }
   ctx.restore();
 
   // 2. Scene overlay (Particles, color grading, which act as mid/foreground)
@@ -828,8 +1236,17 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
     drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled);
   }
 
-  // 4. Draw Cinematic Storytelling Text System
-  drawCinematicText(ctx, W, H, text, now);
+  // 4. Draw text — use sections if any section has content, else legacy text
+  const hasSections = sections && (
+    (sections.title?.text || '').trim() ||
+    (sections.content?.text || '').trim() ||
+    (sections.conclusion?.text || '').trim()
+  );
+  if (hasSections) {
+    drawSections(ctx, W, H, sections, now, lang);
+  } else {
+    drawCinematicText(ctx, W, H, text, now);
+  }
 
   // Fade in/out between scenes to eliminate flicker
   const fadeT = sceneT;
@@ -842,11 +1259,11 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   }
 }
 
-export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true) {
+export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en') {
   let start = null, raf = null;
   const tick = (ts) => {
     if (!start) start = ts;
-    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled);
+    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, lang);
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);

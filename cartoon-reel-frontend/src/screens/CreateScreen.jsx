@@ -1,13 +1,15 @@
 /**
  * CreateScreen.jsx — Text input + Category tabs + Template selector + Music upload
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Film, ChevronLeft, Zap, ZapOff } from 'lucide-react';
+import { Sparkles, Film, ChevronLeft, Zap, ZapOff, ImagePlus, Video, Crop, Trash2 } from 'lucide-react';
 import { useReelStore } from '../store/useReelStore';
 import { useReelGenerator } from '../hooks/useReelGenerator';
 import TemplateSelector from '../components/TemplateSelector';
 import MusicUpload from '../components/MusicUpload';
+import MediaCropModal from '../components/MediaCropModal';
+import RichTextInput from '../components/RichTextInput';
 import Toast from '../components/Toast';
 
 const container = { hidden:{}, show:{ transition:{ staggerChildren:0.07 } } };
@@ -16,8 +18,168 @@ const item = {
   show:   { opacity:1, y:0, transition:{ type:'spring', stiffness:300, damping:26 } },
 };
 
+/* ── Custom Media Section (image or video upload + crop) ─── */
+function CustomMediaSection() {
+  const { state, setCustomMedia, setCustomMediaCrop, removeCustomMedia } = useReelStore();
+  const [showCrop, setShowCrop] = useState(false);
+  const mediaInputRef = useRef(null);
+
+  const hasMedia = !!state.customMedia;
+  const mediaType = state.customMediaCrop?.type || null;
+  const previewUrl = hasMedia ? URL.createObjectURL(state.customMedia) : null;
+
+  const onFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    if (!isVideo && !isImage) return;
+    setCustomMedia(file, isVideo ? 'video' : 'image');
+    // auto-open crop modal
+    setShowCrop(true);
+    e.target.value = '';
+  };
+
+  const cropLabel = hasMedia
+    ? `${mediaType === 'video' ? '🎥' : '🖼️'} ${state.customMedia.name.slice(0, 26)}${state.customMedia.name.length > 26 ? '…' : ''}`
+    : null;
+
+  return (
+    <motion.section variants={item} style={{ marginBottom:'1.5rem' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'0.75rem' }}>
+        <p className="section-label" style={{ margin:0 }}>Custom Frame Media <span style={{ color:'var(--text-muted)', fontWeight:500, fontSize:'0.7rem' }}>(Optional)</span></p>
+        {hasMedia && (
+          <button
+            id="remove-custom-media-btn"
+            onClick={removeCustomMedia}
+            style={{
+              display:'flex', alignItems:'center', gap:'0.3rem',
+              background:'rgba(255,60,60,0.12)', border:'1px solid rgba(255,60,60,0.25)',
+              color:'#ff7070', borderRadius:8, padding:'0.3rem 0.6rem',
+              fontSize:'0.72rem', fontWeight:700, cursor:'pointer',
+            }}
+          >
+            <Trash2 size={12} /> Remove
+          </button>
+        )}
+      </div>
+
+      {!hasMedia ? (
+        /* Upload prompt */
+        <label
+          id="custom-media-upload-label"
+          htmlFor="custom-media-input"
+          style={{
+            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+            gap:'0.6rem', height:110, borderRadius:16,
+            border:'2px dashed rgba(168,85,247,0.35)',
+            background:'rgba(168,85,247,0.05)',
+            cursor:'pointer', transition:'all 0.22s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background='rgba(168,85,247,0.1)'; e.currentTarget.style.borderColor='rgba(168,85,247,0.6)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background='rgba(168,85,247,0.05)'; e.currentTarget.style.borderColor='rgba(168,85,247,0.35)'; }}
+        >
+          <div style={{ display:'flex', gap:'0.75rem' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'0.35rem', color:'rgba(168,85,247,0.8)', fontSize:'0.8rem', fontWeight:600 }}>
+              <ImagePlus size={20} /> Image
+            </div>
+            <div style={{ width:1, background:'rgba(255,255,255,0.15)' }} />
+            <div style={{ display:'flex', alignItems:'center', gap:'0.35rem', color:'rgba(99,205,255,0.8)', fontSize:'0.8rem', fontWeight:600 }}>
+              <Video size={20} /> Video
+            </div>
+          </div>
+          <span style={{ fontSize:'0.72rem', color:'var(--text-muted)' }}>
+            Tap to upload your image or video as the reel background
+          </span>
+          <input
+            ref={mediaInputRef}
+            id="custom-media-input"
+            type="file"
+            accept="image/*,video/*"
+            style={{ display:'none' }}
+            onChange={onFileChange}
+          />
+        </label>
+      ) : (
+        /* Existing media preview card */
+        <div style={{
+          display:'flex', gap:'0.75rem', alignItems:'center',
+          background:'rgba(255,255,255,0.04)', borderRadius:14,
+          border:'1.5px solid rgba(168,85,247,0.3)', padding:'0.625rem 0.875rem',
+        }}>
+          {/* Thumbnail */}
+          <div style={{
+            width:60, height:80, borderRadius:10, overflow:'hidden',
+            flexShrink:0, background:'#111', border:'1px solid rgba(255,255,255,0.1)',
+          }}>
+            {mediaType === 'video' ? (
+              <video
+                src={previewUrl}
+                style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                muted
+                autoPlay
+                loop
+                playsInline
+              />
+            ) : (
+              <img
+                src={previewUrl}
+                alt="custom frame"
+                style={{ width:'100%', height:'100%', objectFit:'cover' }}
+              />
+            )}
+          </div>
+
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontWeight:700, fontSize:'0.82rem', color:'#fff', marginBottom:'0.2rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {cropLabel}
+            </p>
+            <p style={{ fontSize:'0.68rem', color:'var(--text-muted)' }}>
+              Scale: {((state.customMediaCrop?.scale || 1) * 100).toFixed(0)}%
+              &nbsp;·&nbsp;
+              Pos: {Math.round(state.customMediaCrop?.x || 0)}, {Math.round(state.customMediaCrop?.y || 0)}
+            </p>
+
+            <button
+              id="reposition-media-btn"
+              onClick={() => setShowCrop(true)}
+              style={{
+                marginTop:'0.5rem', display:'inline-flex', alignItems:'center', gap:'0.35rem',
+                background:'linear-gradient(135deg,var(--accent-purple),var(--accent-indigo))',
+                border:'none', borderRadius:8, color:'#fff', padding:'0.35rem 0.75rem',
+                fontSize:'0.72rem', fontWeight:700, cursor:'pointer',
+              }}
+            >
+              <Crop size={12} /> Reposition
+            </button>
+          </div>
+        </div>
+      )}
+
+      <p style={{ fontSize:'0.68rem', color:'var(--text-muted)', marginTop:'0.5rem', lineHeight:1.5 }}>
+        Your media plays as the reel background. Cartoon characters and text appear on top.
+      </p>
+
+      {/* Crop Modal */}
+      {showCrop && state.customMedia && (
+        <MediaCropModal
+          file={state.customMedia}
+          mediaType={mediaType}
+          initialCrop={state.customMediaCrop}
+          onConfirm={(crop) => { setCustomMediaCrop(crop); setShowCrop(false); }}
+          onClose={() => setShowCrop(false)}
+        />
+      )}
+    </motion.section>
+  );
+}
+
 export default function CreateScreen() {
-  const { state, setText, setError, goHome, setCustomSprite, toggleAnimation } = useReelStore();
+  const {
+    state, setText, setError, goHome, setCustomSprite, toggleAnimation,
+    setCustomMedia, setCustomMediaCrop, removeCustomMedia,
+    setSectionText, setSectionStyle, setLanguage,
+  } = useReelStore();
   const { generate } = useReelGenerator();
   const [category, setCategory] = useState('cartoon');
   const [toastMsg, setToastMsg]   = useState('');
@@ -60,17 +222,15 @@ export default function CreateScreen() {
           </div>
         </motion.header>
 
-        {/* Your Text */}
+        {/* Rich Text Input — Title / Content / Conclusion */}
         <motion.section variants={item} style={{ marginBottom:'1.25rem' }}>
-          <p className="section-label">Your Text</p>
-          <textarea
-            id="reel-text-input"
-            className="input-glass"
-            rows={4}
-            placeholder="Enter any amount of text — it will unfold as a cinematic story in your video…"
-            value={state.text}
-            onChange={(e) => setText(e.target.value)}
-            aria-label="Reel text"
+          <p className="section-label">Your Content</p>
+          <RichTextInput
+            sections={state.sections}
+            language={state.language}
+            onSectionText={setSectionText}
+            onSectionStyle={setSectionStyle}
+            onLanguage={setLanguage}
           />
         </motion.section>
 
@@ -173,6 +333,9 @@ export default function CreateScreen() {
             </p>
           </motion.section>
         )}
+
+        {/* ── Custom Frame Media (Image or Video) ─────────────────────── */}
+        <CustomMediaSection />
 
         {/* Music Upload */}
         <motion.div variants={item} style={{ marginBottom:'5rem' }}>

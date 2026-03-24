@@ -32,11 +32,14 @@ export function useReelGenerator() {
 
   const generate = useCallback(async () => {
     const { state, startLoading, setLoadingStep, finishReel, setError } = store;
-    const { text, templateId, musicFile, customSprites, animationEnabled } = state;
+    const { text, templateId, musicFile, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language } = state;
 
     // ── Validate input ────────────────────────────────────
-    if (!text || !text.trim()) {
-      setError('Please enter some text for your reel!');
+    const hasContent = sections
+      ? ((sections.title?.text || '').trim() || (sections.content?.text || '').trim() || (sections.conclusion?.text || '').trim())
+      : (text && text.trim());
+    if (!hasContent) {
+      setError('Please enter some text in at least one section!');
       return;
     }
 
@@ -143,7 +146,7 @@ export function useReelGenerator() {
           // Render one frame per tick
           if (frame < TOTAL_FRAMES) {
             const nowSec = frame / FPS;
-            drawFrame(canvas, nowSec, template, text, customSprites, animationEnabled);
+            drawFrame(canvas, nowSec, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language);
             frame++;
           } else {
             // All frames rendered — stop recording

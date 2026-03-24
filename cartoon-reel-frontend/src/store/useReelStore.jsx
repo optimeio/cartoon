@@ -6,6 +6,10 @@
 import { createContext, useContext, useReducer, useCallback } from 'react';
 import TEMPLATES from '../data/templates';
 
+/* ── Default section style ─────────────────────────────── */
+const mkSection = (text = '', color = '#FFFFFF', align = 'center', font = 'modern') =>
+  ({ text, color, align, font });
+
 /* ── State shape ──────────────────────────────────────── */
 const initialState = {
   /** Current screen: 'home' | 'create' | 'loading' | 'preview' */
@@ -13,44 +17,60 @@ const initialState = {
 
   /** User inputs */
   text: '',
-  templateId: null, // will be set once templates load
-  musicFile: null,      // File object
+  templateId: null,
+  musicFile: null,
   musicName: '',
-  musicDuration: null,  // seconds
-  customSprites: [null, null, null], // Users 3 uploaded image slots for custom templates
-  animationEnabled: true, // Toggle character/frame motion physics
-  
+  musicDuration: null,
+  customSprites: [null, null, null],
+  animationEnabled: true,
+  customMedia: null,
+  customMediaCrop: { x: 0, y: 0, scale: 1, type: null },
+
+  /** Three-section rich text */
+  sections: {
+    title:      mkSection('', '#FFD700', 'center', 'bold'),
+    content:    mkSection('', '#FFFFFF', 'center', 'modern'),
+    conclusion: mkSection('', '#C084FC', 'center', 'bold'),
+  },
+  language: 'en', // 'en' | 'ta' | 'hi'
+
   /** Dynamic DB State */
   categories: [],
   templates: [],
 
   /** Generation results */
-  reelUrl: null,        // blob URL of generated reel (Canvas recording)
-  reelVersion: 0,       // incremented on each regenerate
+  reelUrl: null,
+  reelVersion: 0,
 
   /** Loading step */
-  loadingStep: 0,       // 0-3 index into LOADING_STEPS
+  loadingStep: 0,
 
   /** Error message */
   error: null,
 };
 
 const ACTIONS = {
-  SET_TEXT:         'SET_TEXT',
-  SET_TEMPLATE:     'SET_TEMPLATE',
-  SET_MUSIC:        'SET_MUSIC',
-  REMOVE_MUSIC:     'REMOVE_MUSIC',
-  START_LOADING:    'START_LOADING',
-  SET_LOADING_STEP: 'SET_LOADING_STEP',
-  FINISH_REEL:      'FINISH_REEL',
-  REGENERATE:       'REGENERATE',
-  GO_HOME:          'GO_HOME',
-  GO_CREATE:        'GO_CREATE',
-  GO_ADMIN:         'GO_ADMIN',
-  SET_ERROR:        'SET_ERROR',
-  SET_DB:           'SET_DB',
-  SET_CUSTOM_SPRITE:'SET_CUSTOM_SPRITE',
-  TOGGLE_ANIMATION: 'TOGGLE_ANIMATION',
+  SET_TEXT:            'SET_TEXT',
+  SET_TEMPLATE:        'SET_TEMPLATE',
+  SET_MUSIC:           'SET_MUSIC',
+  REMOVE_MUSIC:        'REMOVE_MUSIC',
+  START_LOADING:       'START_LOADING',
+  SET_LOADING_STEP:    'SET_LOADING_STEP',
+  FINISH_REEL:         'FINISH_REEL',
+  REGENERATE:          'REGENERATE',
+  GO_HOME:             'GO_HOME',
+  GO_CREATE:           'GO_CREATE',
+  GO_ADMIN:            'GO_ADMIN',
+  SET_ERROR:           'SET_ERROR',
+  SET_DB:              'SET_DB',
+  SET_CUSTOM_SPRITE:   'SET_CUSTOM_SPRITE',
+  TOGGLE_ANIMATION:    'TOGGLE_ANIMATION',
+  SET_CUSTOM_MEDIA:    'SET_CUSTOM_MEDIA',
+  SET_CUSTOM_MEDIA_CROP: 'SET_CUSTOM_MEDIA_CROP',
+  REMOVE_CUSTOM_MEDIA: 'REMOVE_CUSTOM_MEDIA',
+  SET_SECTION_TEXT:    'SET_SECTION_TEXT',
+  SET_SECTION_STYLE:   'SET_SECTION_STYLE',
+  SET_LANGUAGE:        'SET_LANGUAGE',
 };
 
 function reducer(state, action) {
@@ -105,20 +125,60 @@ function reducer(state, action) {
       return { ...state, error: action.payload };
 
     case ACTIONS.SET_DB:
-      return { 
-        ...state, 
-        categories: action.payload.categories || [], 
+      return {
+        ...state,
+        categories: action.payload.categories || [],
         templates: action.payload.templates || [],
         templateId: state.templateId || (action.payload.templates?.[0]?.id)
       };
 
-    case ACTIONS.SET_CUSTOM_SPRITE:
+    case ACTIONS.SET_CUSTOM_SPRITE: {
       const newSprites = [...state.customSprites];
       newSprites[action.payload.index] = action.payload.file;
       return { ...state, customSprites: newSprites };
+    }
 
     case ACTIONS.TOGGLE_ANIMATION:
       return { ...state, animationEnabled: !state.animationEnabled };
+
+    case ACTIONS.SET_CUSTOM_MEDIA:
+      return {
+        ...state,
+        customMedia: action.payload.file,
+        customMediaCrop: { x: 0, y: 0, scale: 1, type: action.payload.mediaType },
+      };
+
+    case ACTIONS.SET_CUSTOM_MEDIA_CROP:
+      return { ...state, customMediaCrop: { ...state.customMediaCrop, ...action.payload } };
+
+    case ACTIONS.REMOVE_CUSTOM_MEDIA:
+      return { ...state, customMedia: null, customMediaCrop: { x: 0, y: 0, scale: 1, type: null } };
+
+    case ACTIONS.SET_SECTION_TEXT: {
+      const { key, text } = action.payload;
+      return {
+        ...state,
+        sections: {
+          ...state.sections,
+          [key]: { ...state.sections[key], text },
+        },
+        error: null,
+      };
+    }
+
+    case ACTIONS.SET_SECTION_STYLE: {
+      const { key, prop, value } = action.payload;
+      return {
+        ...state,
+        sections: {
+          ...state.sections,
+          [key]: { ...state.sections[key], [prop]: value },
+        },
+      };
+    }
+
+    case ACTIONS.SET_LANGUAGE:
+      return { ...state, language: action.payload };
 
     default:
       return state;
@@ -147,6 +207,12 @@ export function ReelProvider({ children }) {
     setDb:          useCallback((data) => dispatch({ type: ACTIONS.SET_DB, payload: data }), []),
     setCustomSprite:useCallback((index, file) => dispatch({ type: ACTIONS.SET_CUSTOM_SPRITE, payload: {index, file} }), []),
     toggleAnimation:useCallback(() => dispatch({ type: ACTIONS.TOGGLE_ANIMATION }), []),
+    setCustomMedia: useCallback((file, mediaType) => dispatch({ type: ACTIONS.SET_CUSTOM_MEDIA, payload: { file, mediaType } }), []),
+    setCustomMediaCrop: useCallback((crop) => dispatch({ type: ACTIONS.SET_CUSTOM_MEDIA_CROP, payload: crop }), []),
+    removeCustomMedia: useCallback(() => dispatch({ type: ACTIONS.REMOVE_CUSTOM_MEDIA }), []),
+    setSectionText: useCallback((key, text) => dispatch({ type: ACTIONS.SET_SECTION_TEXT, payload: { key, text } }), []),
+    setSectionStyle:useCallback((key, prop, value) => dispatch({ type: ACTIONS.SET_SECTION_STYLE, payload: { key, prop, value } }), []),
+    setLanguage:    useCallback((lang) => dispatch({ type: ACTIONS.SET_LANGUAGE, payload: lang }), []),
   };
 
   return (
