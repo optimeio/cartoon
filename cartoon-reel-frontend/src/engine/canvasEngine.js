@@ -1093,7 +1093,7 @@ function drawHandGesture(ctx, W, H, now, animationEnabled) {
 }
 
 /* ── CHARACTER SETTINGS ── */
-function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled = true, charPosition = null) {
+function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled = true, charPosition = null, charScale = 1) {
   let sprite = null;
 
   // Determine sprite source - user uploads override built-ins
@@ -1129,18 +1129,20 @@ function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites,
   const charCX = W * posX;
   const charCY = H * posY + bobY;
 
-  ctx.save();
   ctx.translate(charCX, charCY);
   ctx.scale(breathScale, breathScale);
   ctx.globalAlpha = 1;
 
+  const baseSh = H * 0.38;
+  const appliedScale = charScale || 1;
+  const sh = baseSh * appliedScale;
+
   if (sprite && sprite.complete && sprite.naturalWidth > 0) {
-    const sh = H * 0.38;
     const sw = sprite.width * (sh / sprite.height);
     ctx.drawImage(sprite, -sw / 2, -sh / 2, sw, sh);
   } else {
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    const sh = H * 0.38; const sw = sh * 0.6;
+    const sw = sh * 0.6;
     ctx.fillRect(-sw/2, -sh/2, sw, sh);
   }
   ctx.restore();
@@ -1149,7 +1151,7 @@ function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites,
   drawHandGesture(ctx, W, H, now, animationEnabled);
 }
 
-export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null) {
+export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null, charScale = 1) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const W = canvas.width, H = canvas.height;
   const sceneList = template.scenes || Array(5).fill({ type: 'generic', duration: 3 });
@@ -1223,8 +1225,8 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
       const mW = mediaEl instanceof HTMLVideoElement ? mediaEl.videoWidth  : mediaEl.naturalWidth;
       const mH = mediaEl instanceof HTMLVideoElement ? mediaEl.videoHeight : mediaEl.naturalHeight;
 
-      // Cover-fit at scale 1, then apply user scale + position centered
-      const baseFit = Math.max(W / mW, H / mH);
+      // Contain-fit at scale 1 (Math.min instead of Math.max) to match the Crop modal perfectly
+      const baseFit = Math.min(W / mW, H / mH);
       const finalScale = baseFit * cropScale;
       const dw = mW * finalScale;
       const dh = mH * finalScale;
@@ -1234,8 +1236,8 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
       ctx.drawImage(mediaEl, dx, dy, dw, dh);
     }
 
-    // Subtle darkening overlay so text/characters remain readable
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    // Subtle darkening overlay so text/characters remain readable (lightened for brightness)
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
     ctx.fillRect(0, 0, W, H);
   } else {
     drawBg(ctx, W, H, img);
@@ -1246,13 +1248,13 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   ctx.save();
   const renderer = SCENES[activeScene.type];
   if (renderer) renderer(ctx, W, H, sceneT, template, now, text);
-  else colorGrade(ctx, W, H, 'rgba(0,0,0,0.3)', 1);
+  else colorGrade(ctx, W, H, 'rgba(0,0,0,0.1)', 1);
   ctx.restore();
 
-  // 3. Draw Character Sprite Layer (pass charPosition)
+  // 3. Draw Character Sprite Layer (pass charPosition & charScale)
   const hasUserSprites = customSprites && customSprites.some(s => s);
   if ((template.category === 'cartoon' && !hasUserSprites) || hasUserSprites) {
-    drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled, charPosition);
+    drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled, charPosition, charScale);
   }
 
   // 4. Draw text — use sections if any section has content, else legacy text
@@ -1278,11 +1280,11 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   }
 }
 
-export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null) {
+export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null, charScale = 1) {
   let start = null, raf = null;
   const tick = (ts) => {
     if (!start) start = ts;
-    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, lang, charPosition);
+    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, lang, charPosition, charScale);
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);

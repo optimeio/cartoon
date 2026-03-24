@@ -189,7 +189,7 @@ export default function CreateScreen() {
   const {
     state, setError, goHome, setCustomSprite, toggleAnimation,
     setCustomMedia, setCustomMediaCrop, removeCustomMedia,
-    setSectionText, setSectionStyle, setLanguage, setCharPosition
+    setSectionText, setSectionStyle, setLanguage, setCharPosition, setCharScale
   } = useReelStore();
   const { generate } = useReelGenerator();
   const [category, setCategory] = useState('cartoon');
@@ -387,6 +387,21 @@ export default function CreateScreen() {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Character Scale Range Slider */}
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff', margin: 0 }}>Character Size</p>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{Math.round((state.charScale || 1) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.3} max={2.2} step={0.05}
+                  value={state.charScale || 1}
+                  onChange={(e) => setCharScale(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                />
               </div>
             </div>
           </motion.section>

@@ -36,6 +36,7 @@ const initialState = {
 
   /** Character frame position on the canvas (fractional 0-1) */
   charPosition: { x: 0.72, y: 0.78 },
+  charScale: 1,
 
   /** Dynamic DB State */
   categories: [],
@@ -75,6 +76,7 @@ const ACTIONS = {
   SET_SECTION_STYLE:   'SET_SECTION_STYLE',
   SET_LANGUAGE:        'SET_LANGUAGE',
   SET_CHAR_POSITION:   'SET_CHAR_POSITION',
+  SET_CHAR_SCALE:      'SET_CHAR_SCALE',
 };
 
 function reducer(state, action) {
@@ -187,6 +189,9 @@ function reducer(state, action) {
     case ACTIONS.SET_CHAR_POSITION:
       return { ...state, charPosition: { ...state.charPosition, ...action.payload } };
 
+    case ACTIONS.SET_CHAR_SCALE:
+      return { ...state, charScale: action.payload };
+
     default:
       return state;
   }
@@ -221,6 +226,7 @@ export function ReelProvider({ children }) {
     setSectionStyle:useCallback((key, prop, value) => dispatch({ type: ACTIONS.SET_SECTION_STYLE, payload: { key, prop, value } }), []),
     setLanguage:    useCallback((lang) => dispatch({ type: ACTIONS.SET_LANGUAGE, payload: lang }), []),
     setCharPosition: useCallback((pos) => dispatch({ type: ACTIONS.SET_CHAR_POSITION, payload: pos }), []),
+    setCharScale:    useCallback((scale) => dispatch({ type: ACTIONS.SET_CHAR_SCALE, payload: scale }), []),
   };
 
   return (
