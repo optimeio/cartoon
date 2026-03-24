@@ -149,16 +149,20 @@ export default function AdminScreen() {
   };
 
   const uploadBg = async (file, tplIdx) => {
+    const tplName = tpls[tplIdx]?.name || `template_${tplIdx}`;
     const fd = new FormData();
     fd.append('image', file);
+    fd.append('templateName', tplName);
     try {
       const res = await fetch(`${API}/upload-image`, { method: 'POST', body: fd });
       const d   = await res.json();
       if (d.url) {
         setTpls(prev => { const n = [...prev]; n[tplIdx] = { ...n[tplIdx], bg: d.url }; return n; });
-        showToast('✅ Background uploaded!');
+        showToast(`✅ Background saved as ${d.filename || d.url}!`);
+      } else {
+        showToast('❌ Upload failed: ' + (d.error || 'Unknown error'));
       }
-    } catch { showToast('❌ Upload failed'); }
+    } catch (e) { showToast('❌ Upload failed: ' + e.message); }
   };
 
   // Category helpers

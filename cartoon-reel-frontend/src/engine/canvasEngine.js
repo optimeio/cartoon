@@ -1196,20 +1196,21 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   const mainBgKey = TEMPLATE_BG[template.id] || 'shinchan';
   let img = getImage(mainBgKey);
 
-  // If Admin assigned a remote dynamic background URL, use on-the-fly caching
+  // If Admin assigned a template background, resolve it
   if (template.isCustom && template.bg) {
-    const cached = kb_custom_bg_cache[template.bg];
+    const bgUrl = template.bg;
+    const cached = kb_custom_bg_cache[bgUrl];
     if (cached && cached.complete && cached.naturalWidth > 0) {
       img = cached;
     } else if (!cached) {
-      // First time seen: fire off the load (no crossOrigin to avoid CORS canvas taint)
       const fresh = new Image();
-      fresh.onload = () => { kb_custom_bg_cache[template.bg] = fresh; };
-      fresh.onerror = () => { console.warn('[canvasEngine] Could not load admin bg:', template.bg); };
-      fresh.src = template.bg;
-      kb_custom_bg_cache[template.bg] = fresh; // store even while loading so we only fire once
+      // /assets/ paths are same-origin — no crossOrigin needed (avoids canvas taint)
+      fresh.onload  = () => { kb_custom_bg_cache[bgUrl] = fresh; };
+      fresh.onerror = () => console.warn('[canvasEngine] Failed to load admin bg:', bgUrl);
+      fresh.src = bgUrl;
+      kb_custom_bg_cache[bgUrl] = fresh;
     } else {
-      img = null; // still loading — drawBg will show #111 placeholder
+      img = null; // still loading — drawBg shows #111 placeholder
     }
   }
 
