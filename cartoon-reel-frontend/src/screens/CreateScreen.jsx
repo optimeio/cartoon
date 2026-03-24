@@ -146,11 +146,22 @@ function CustomMediaSection() {
               style={{
                 marginTop:'0.5rem', display:'inline-flex', alignItems:'center', gap:'0.35rem',
                 background:'linear-gradient(135deg,var(--accent-purple),var(--accent-indigo))',
-                border:'none', borderRadius:8, color:'#fff', padding:'0.35rem 0.75rem',
                 fontSize:'0.72rem', fontWeight:700, cursor:'pointer',
               }}
             >
-              <Crop size={12} /> Reposition
+              <Crop size={14} /> Crop & Position
+            </button>
+            <button
+              id="remove-media-btn"
+              onClick={() => { removeCustomMedia(); setCustomMediaCrop(null); setShowCrop(false); }}
+              style={{
+                marginTop:'0.5rem', display:'inline-flex', alignItems:'center', gap:'0.35rem',
+                background:'rgba(255,50,50,0.15)',
+                border:'1px solid rgba(255,50,50,0.4)', borderRadius:8, color:'#FF6B6B', padding:'0.35rem 0.75rem',
+                fontSize:'0.72rem', fontWeight:700, cursor:'pointer',
+              }}
+            >
+              Remove
             </button>
           </div>
         </div>
@@ -298,31 +309,48 @@ export default function CreateScreen() {
             {/* 3 frame slots */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.75rem' }}>
               {[0, 1, 2].map(idx => (
-                <label key={idx} style={{
-                  height:90, display:'flex', alignItems:'center', justifyContent:'center',
-                  background:'rgba(255,255,255,0.05)', borderRadius:12,
-                  border: state.customSprites[idx] ? '2px solid var(--accent-purple)' : '2px dashed rgba(255,255,255,0.2)',
-                  cursor:'pointer', overflow:'hidden', position:'relative', transition:'border 0.2s'
-                }}>
-                  {state.customSprites[idx] ? (
-                    <img
-                      src={URL.createObjectURL(state.customSprites[idx])}
-                      style={{ width:'100%', height:'100%', objectFit:'contain' }}
-                      alt={`frame-${idx+1}`}
+                <div key={idx} style={{ position:'relative' }}>
+                  <label style={{
+                    height:90, display:'flex', alignItems:'center', justifyContent:'center',
+                    background:'rgba(255,255,255,0.05)', borderRadius:12,
+                    border: state.customSprites[idx] ? '2px solid var(--accent-purple)' : '2px dashed rgba(255,255,255,0.2)',
+                    cursor:'pointer', overflow:'hidden', position:'relative', transition:'border 0.2s',
+                    width:'100%',
+                  }}>
+                    {state.customSprites[idx] ? (
+                      <img
+                        src={URL.createObjectURL(state.customSprites[idx])}
+                        style={{ width:'100%', height:'100%', objectFit:'contain' }}
+                        alt={`frame-${idx+1}`}
+                      />
+                    ) : (
+                      <div style={{ textAlign:'center' }}>
+                        <div style={{ fontSize:'1.2rem', opacity:0.4 }}>➕</div>
+                        <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>Frame {idx+1}</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display:'none' }}
+                      onChange={e => e.target.files[0] && setCustomSprite(idx, e.target.files[0])}
                     />
-                  ) : (
-                    <div style={{ textAlign:'center' }}>
-                      <div style={{ fontSize:'1.2rem', opacity:0.4 }}>➕</div>
-                      <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>Frame {idx+1}</span>
-                    </div>
+                  </label>
+                  {state.customSprites[idx] && (
+                    <button
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); setCustomSprite(idx, null); }}
+                      title="Remove frame"
+                      style={{
+                        position:'absolute', top:4, right:4, zIndex:10,
+                        width:20, height:20, borderRadius:'50%',
+                        background:'rgba(220,30,30,0.85)', border:'none',
+                        color:'#fff', fontSize:'0.6rem', fontWeight:900,
+                        cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                        lineHeight:1, boxShadow:'0 2px 6px rgba(0,0,0,0.4)',
+                      }}
+                    >✕</button>
                   )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display:'none' }}
-                    onChange={e => e.target.files[0] && setCustomSprite(idx, e.target.files[0])}
-                  />
-                </label>
+                </div>
               ))}
             </div>
 

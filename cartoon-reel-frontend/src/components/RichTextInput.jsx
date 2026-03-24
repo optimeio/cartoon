@@ -79,6 +79,10 @@ function SectionEditor({ config, style, language, onTextChange, onStyleChange })
   const { key, label, icon, placeholder, rows, badge, badgeStyle, hint } = config;
   const lang = LANG_ATTR[language] || 'en';
 
+  const fontFamily = style.font === 'elegant' || style.font === 'classic'
+    ? 'Georgia, serif'
+    : "'Outfit', sans-serif";
+
   return (
     <div>
       {/* Header row */}
@@ -108,10 +112,11 @@ function SectionEditor({ config, style, language, onTextChange, onStyleChange })
           marginBottom: '0.6rem',
           fontSize: '0.92rem',
           resize: 'vertical',
-          fontWeight: key === 'title' ? 700 : 400,
+          fontWeight: key === 'title' || style.font === 'bold' ? 700 : 400,
           color: style.color || '#fff',
           fontStyle: style.font === 'elegant' ? 'italic' : 'normal',
           letterSpacing: style.font === 'elegant' ? '0.02em' : '0',
+          fontFamily,
           lineHeight: 1.6,
         }}
       />
@@ -131,6 +136,7 @@ function SectionEditor({ config, style, language, onTextChange, onStyleChange })
           {COLORS.map(c => (
             <button
               key={c.value}
+              type="button"
               title={c.label}
               onClick={() => onStyleChange('color', c.value)}
               style={{
@@ -177,6 +183,7 @@ function SectionEditor({ config, style, language, onTextChange, onStyleChange })
           ].map(a => (
             <button
               key={a.id}
+              type="button"
               title={`Align ${a.id}`}
               onClick={() => onStyleChange('align', a.id)}
               style={{
@@ -198,7 +205,8 @@ function SectionEditor({ config, style, language, onTextChange, onStyleChange })
         <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
           {FONTS.map(f => (
             <button
-              key={f.id}
+              key={`${key}-font-${f.id}`}
+              type="button"
               onClick={() => onStyleChange('font', f.id)}
               style={{
                 padding: '0.2rem 0.5rem', borderRadius: 6, border: 'none', cursor: 'pointer',
@@ -208,6 +216,7 @@ function SectionEditor({ config, style, language, onTextChange, onStyleChange })
                 border: `1px solid ${style.font === f.id ? 'rgba(168,85,247,0.4)' : 'transparent'}`,
                 transition: 'all 0.18s',
                 fontStyle: f.id === 'elegant' ? 'italic' : 'normal',
+                fontFamily: f.id === 'elegant' || f.id === 'classic' ? 'Georgia, serif' : "'Outfit', sans-serif",
               }}
             >
               {f.label}

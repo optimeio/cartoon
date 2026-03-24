@@ -989,10 +989,7 @@ const SCENES = {
 
 const KB_MODE = ['zoom', 'zoom-out', 'pan-r', 'pan-l'];
 
-// Cache maps for dynamic user blobs so canvas doesn't stutter building DOM images
-const kb_custom_bg_cache = {};
-const custom_sprite_cache = {};
-const custom_media_cache  = {}; // { key: HTMLImageElement | HTMLVideoElement }
+
 
 /* ── Hand gesture pointing animation ── */
 function drawHandGesture(ctx, W, H, now, animationEnabled) {

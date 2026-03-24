@@ -10,6 +10,13 @@ import { X, Check, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 const FRAME_W = 270; // display width of the 9:16 frame in the modal
 const FRAME_H = 480; // display height  (9:16 = 540×960 → half)
 
+const dpadBtn = {
+  width: 36, height: 36, borderRadius: 8,
+  background: 'rgba(255,255,255,0.08)', border: 'none',
+  color: '#fff', cursor: 'pointer', fontSize: '0.9rem',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+};
+
 export default function MediaCropModal({ file, mediaType, initialCrop, onConfirm, onClose }) {
   const [crop, setCrop] = useState(
     initialCrop && initialCrop.scale > 0
@@ -220,57 +227,74 @@ export default function MediaCropModal({ file, mediaType, initialCrop, onConfirm
           </div>
         </motion.div>
 
-        {/* Zoom controls */}
+        {/* Zoom + Position controls */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}
         >
-          <button
-            onClick={zoomOut}
-            title="Zoom out"
-            style={{
-              background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
-              color: '#fff', width: 44, height: 44, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <ZoomOut size={18} />
-          </button>
+          {/* Zoom row */}
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <button
+              onClick={zoomOut}
+              title="Zoom out"
+              style={{
+                background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
+                color: '#fff', width: 44, height: 44, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <ZoomOut size={18} />
+            </button>
 
-          {/* Scale indicator */}
-          <div style={{
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8, padding: '0.4rem 0.9rem', color: '#fff',
-            fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '0.875rem',
-            minWidth: 68, textAlign: 'center',
-          }}>
-            {(crop.scale * 100).toFixed(0)}%
+            {/* Scale indicator */}
+            <div style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8, padding: '0.4rem 0.9rem', color: '#fff',
+              fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '0.875rem',
+              minWidth: 68, textAlign: 'center',
+            }}>
+              {(crop.scale * 100).toFixed(0)}%
+            </div>
+
+            <button
+              onClick={zoomIn}
+              title="Zoom in"
+              style={{
+                background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
+                color: '#fff', width: 44, height: 44, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <ZoomIn size={18} />
+            </button>
+
+            <button
+              onClick={reset}
+              title="Reset position & zoom"
+              style={{
+                background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
+                color: '#fff', width: 44, height: 44, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <RotateCcw size={16} />
+            </button>
           </div>
 
-          <button
-            onClick={zoomIn}
-            title="Zoom in"
-            style={{
-              background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
-              color: '#fff', width: 44, height: 44, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <ZoomIn size={18} />
-          </button>
-
-          <button
-            onClick={reset}
-            title="Reset position & zoom"
-            style={{
-              background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
-              color: '#fff', width: 44, height: 44, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <RotateCcw size={16} />
-          </button>
+          {/* D-Pad — fine nudge */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+            <p style={{ fontSize: '0.64rem', color: 'var(--text-muted)', margin: 0, marginBottom: '0.25rem' }}>Fine position</p>
+            <button onClick={() => setCrop(c => ({ ...c, y: c.y - 10 }))} style={dpadBtn}>▲</button>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <button onClick={() => setCrop(c => ({ ...c, x: c.x - 10 }))} style={dpadBtn}>◀</button>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem' }}>✛</span>
+              </div>
+              <button onClick={() => setCrop(c => ({ ...c, x: c.x + 10 }))} style={dpadBtn}>▶</button>
+            </div>
+            <button onClick={() => setCrop(c => ({ ...c, y: c.y + 10 }))} style={dpadBtn}>▼</button>
+          </div>
         </motion.div>
 
         <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: 280 }}>
