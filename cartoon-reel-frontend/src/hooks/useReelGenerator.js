@@ -116,9 +116,8 @@ export function useReelGenerator() {
         });
       }
 
-      // ── Build MediaRecorder stream ────────────────────
+      // ── Build canvas stream ────────────────────────────
       const canvasStream = canvas.captureStream(FPS);
-
       let recorderStream = canvasStream;
       if (audioCtx && audioDest) {
         recorderStream = new MediaStream([
@@ -127,68 +126,69 @@ export function useReelGenerator() {
         ]);
       }
 
-      const recorder = new MediaRecorder(recorderStream, {
-        mimeType,
-        videoBitsPerSecond: 8_000_000, // 8 Mbps — safe cap supported by all browsers
-      });
+      // ── Build MediaRecorder with graceful bitrate fallback ──
+      let recorder;
+      try {
+        recorder = new MediaRecorder(recorderStream, { mimeType, videoBitsPerSecond: 5_000_000 });
+      } catch (_) {
+        try {
+          recorder = new MediaRecorder(recorderStream, { mimeType });
+        } catch (_2) {
+          recorder = new MediaRecorder(recorderStream); // browser chooses everything
+        }
+      }
+      const usedMime = recorder.mimeType || 'video/webm';
 
       const chunks = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
 
-      // ── Render loop (rAF-based so browser doesn't throttle timing) ──
+      // Pre-draw frame 0 so the canvas stream is NEVER blank when recording begins
+      drawFrame(canvas, 0, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition, charScale, bgScale);
+
+      // ── Render + record loop ───────────────────────────
       await new Promise((resolve, reject) => {
         if (abortRef.current) { reject(new Error('Aborted')); return; }
 
         recorder.onstop  = resolve;
         recorder.onerror = (e) => reject(e.error || new Error('MediaRecorder error'));
 
-        // Pre-draw frame 0 so the canvas stream is never empty when recording starts
-        drawFrame(canvas, 0, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition, charScale, bgScale);
-
-        // Small delay to ensure captureStream sees the first painted frame
+        // 100ms warm-up so captureStream registers the pre-drawn frame
         setTimeout(() => {
-          recorder.start(200); // emit a chunk every 200ms
+          recorder.start(250);
           if (audioSourceNode) audioSourceNode.start(0);
 
           let frame = 0;
+          const INTERVAL_MS = 50; // 20fps real-time — always works, even in background tabs
 
-          function renderNext() {
+          const intervalId = setInterval(() => {
             if (abortRef.current) {
+              clearInterval(intervalId);
               try { recorder.requestData(); recorder.stop(); } catch (_) {}
               reject(new Error('Aborted'));
               return;
             }
 
             if (frame < TOTAL_FRAMES) {
-              const nowSec = frame / FPS;
-              drawFrame(canvas, nowSec, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition, charScale, bgScale);
+              drawFrame(canvas, frame / FPS, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition, charScale, bgScale);
               frame++;
-              requestAnimationFrame(renderNext);
             } else {
-              // All frames done — flush final chunk then stop
-              try { recorder.requestData(); } catch (_) {}
-              setTimeout(() => {
-                try { recorder.stop(); } catch (_) {}
-              }, 300);
+              clearInterval(intervalId);
+              try { recorder.requestData(); } catch (_) {} // flush final chunk
+              setTimeout(() => { try { recorder.stop(); } catch (_) {} }, 350);
             }
-          }
-
-          requestAnimationFrame(renderNext);
-        }, 80);
+          }, INTERVAL_MS);
+        }, 100);
       });
-
-      if (abortRef.current) return;
 
       // ── Step 3 – Finalizing ───────────────────────────
       setLoadingStep(3);
       if (abortRef.current) return;
 
-      // Build blob URL
       if (chunks.length === 0) {
         throw new Error('No video data was captured — MediaRecorder produced 0 chunks.');
       }
 
-      const blob = new Blob(chunks, { type: mimeType });
+      const blob = new Blob(chunks, { type: usedMime });
       const url  = URL.createObjectURL(blob);
 
       if (audioCtx) audioCtx.close();
