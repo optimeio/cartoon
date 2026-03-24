@@ -42,24 +42,39 @@ const ease  = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const rand  = (seed, i) => (Math.sin(seed * 127.1 + i * 311.7) * 43758.5453) % 1;
 
-/* ─── Draw background image (static, cover-fit) ─── */
-function drawBg(ctx, W, H, img) {
+/* ─── Draw background image ─── */
+function drawBg(ctx, W, H, img, bgScale = 1, isCustom = false) {
   if (!img || !img.complete || img.naturalWidth === 0) {
     ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); return;
   }
   ctx.save();
-  
+
   const nw = img.naturalWidth;
   const nh = img.naturalHeight;
+  const scale = bgScale || 1;
 
-  // Cover-fit (fills entire screen)
-  const coverR = Math.max(W / nw, H / nh);
-  const dw = nw * coverR;
-  const dh = nh * coverR;
-  const dx = (W - dw) / 2;
-  const dy = (H - dh) / 2;
-  
-  ctx.drawImage(img, dx, dy, dw, dh);
+  if (isCustom) {
+    // Admin-uploaded template: show the FULL original image, no crop allowed.
+    // Use contain-fit so every pixel of the uploaded template is visible.
+    // Fill background first with a dark fill so letterbox areas are black.
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, W, H);
+    const containR = Math.min(W / nw, H / nh) * scale;
+    const dw = nw * containR;
+    const dh = nh * containR;
+    const dx = (W - dw) / 2;
+    const dy = (H - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  } else {
+    // Built-in template: cover-fit fills the whole frame edge to edge.
+    const coverR = Math.max(W / nw, H / nh) * scale;
+    const dw = nw * coverR;
+    const dh = nh * coverR;
+    const dx = (W - dw) / 2;
+    const dy = (H - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
   ctx.restore();
 }
 
@@ -1140,11 +1155,12 @@ function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites,
   ctx.globalAlpha = 1;
 
   const baseSh = H * 0.38;
-  const appliedScale = charScale || 1;
-  const sh = baseSh * appliedScale;
+  const sh = baseSh * (charScale || 1); // Vertical height adjustable by user
 
   if (sprite && sprite.complete && sprite.naturalWidth > 0) {
-    const sw = sprite.width * (sh / sprite.height);
+    // sw keeps original aspect ratio so image is not distorted
+    const aspectRatio = sprite.naturalWidth / sprite.naturalHeight;
+    const sw = sh * aspectRatio;
     ctx.drawImage(sprite, -sw / 2, -sh / 2, sw, sh);
   } else {
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
@@ -1152,12 +1168,9 @@ function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites,
     ctx.fillRect(-sw/2, -sh/2, sw, sh);
   }
   ctx.restore();
-
-  // Hand gesture points from character position toward text area
-  drawHandGesture(ctx, W, H, now, animationEnabled);
 }
 
-export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null, charScale = 1) {
+export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null, charScale = 1, bgScale = 1) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const W = canvas.width, H = canvas.height;
   const sceneList = template.scenes || Array(5).fill({ type: 'generic', duration: 3 });
@@ -1246,7 +1259,7 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
     ctx.fillStyle = 'rgba(0,0,0,0.1)';
     ctx.fillRect(0, 0, W, H);
   } else {
-    drawBg(ctx, W, H, img);
+    drawBg(ctx, W, H, img, bgScale, !!(template.isCustom));
   }
   ctx.restore();
 
@@ -1286,11 +1299,11 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   }
 }
 
-export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null, charScale = 1) {
+export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null, charScale = 1, bgScale = 1) {
   let start = null, raf = null;
   const tick = (ts) => {
     if (!start) start = ts;
-    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, lang, charPosition, charScale);
+    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, lang, charPosition, charScale, bgScale);
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);

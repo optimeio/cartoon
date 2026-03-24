@@ -38,7 +38,12 @@ const TemplatePreview = memo(function TemplatePreview({ template, customSprites,
 export default function TemplateSelector({ category }) {
   const { state, setTemplate } = useReelStore();
   const safeTemp = state.templates || [];
-  const filtered = safeTemp.filter((t) => t.category === category || t.categoryId === category);
+  let filtered = safeTemp.filter((t) => t.category === category || t.categoryId === category);
+  
+  // Failsafe: if the filtering produced nothing (e.g. they deleted the category in Admin), show all templates
+  if (filtered.length === 0) {
+    filtered = safeTemp;
+  }
 
   // Auto-select first template of newly selected category if current selection
   // doesn't belong to the new category
@@ -53,6 +58,9 @@ export default function TemplateSelector({ category }) {
   return (
     <section aria-label="Template selector">
       <p className="section-label">Choose Template</p>
+      {filtered.length === 0 && (
+          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.5rem' }}>No templates available. Please add some via the Admin portal.</p>
+      )}
       <AnimatePresence mode="wait">
         <motion.div
           key={category}

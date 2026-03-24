@@ -189,7 +189,7 @@ export default function CreateScreen() {
   const {
     state, setError, goHome, setCustomSprite, toggleAnimation,
     setCustomMedia, setCustomMediaCrop, removeCustomMedia,
-    setSectionText, setSectionStyle, setLanguage, setCharPosition, setCharScale
+    setSectionText, setSectionStyle, setLanguage, setCharPosition, setCharScale, setBgScale
   } = useReelStore();
   const { generate } = useReelGenerator();
   const [category, setCategory] = useState('cartoon');
@@ -278,6 +278,21 @@ export default function CreateScreen() {
           <TemplateSelector category={category} />
         </motion.div>
 
+        {/* Background Zoom Slider (only relevant for custom/admin templates) */}
+        <motion.div variants={item} style={{ marginBottom:'1.25rem', background:'rgba(255,255,255,0.03)', borderRadius:12, padding:'0.75rem 1rem', border:'1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'0.4rem' }}>
+            <p style={{ fontSize:'0.75rem', fontWeight:600, color:'#fff', margin:0 }}>🖼️ Background Zoom</p>
+            <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>{Math.round((state.bgScale || 1) * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min={0.5} max={2.0} step={0.05}
+            value={state.bgScale || 1}
+            onChange={(e) => setBgScale(parseFloat(e.target.value))}
+            style={{ width:'100%', accentColor:'var(--accent-purple)' }}
+          />
+          <p style={{ fontSize:'0.62rem', color:'var(--text-muted)', marginTop:'0.3rem' }}>Zoom the background template in or out to fit your reel perfectly.</p>
+        </motion.div>
         {/* Custom Character Upload + Animation Toggle */}
         {activeTemplate && (
           <motion.section variants={item} style={{ marginBottom:'1.25rem' }}>
@@ -389,19 +404,20 @@ export default function CreateScreen() {
                 })}
               </div>
 
-              {/* Character Scale Range Slider */}
+              {/* Character Height Slider (vertical size only) */}
               <div style={{ marginTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff', margin: 0 }}>Character Size</p>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff', margin: 0 }}>↕️ Character Height</p>
                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{Math.round((state.charScale || 1) * 100)}%</span>
                 </div>
                 <input
                   type="range"
-                  min={0.3} max={2.2} step={0.05}
+                  min={0.3} max={2.5} step={0.05}
                   value={state.charScale || 1}
                   onChange={(e) => setCharScale(parseFloat(e.target.value))}
                   style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
                 />
+                <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Slide to make the character taller or shorter without distortion.</p>
               </div>
             </div>
           </motion.section>
