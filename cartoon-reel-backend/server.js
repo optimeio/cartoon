@@ -95,8 +95,53 @@ function scheduleCleanup(filePath, delayMs = 5 * 60 * 1000) {
 /* ── MongoDB Atlas Connection ───────────────────────────── */
 const MONGO_URI = 'mongodb://Nithyashree:nithya123@ac-ef51p8d-shard-00-00.kpyedqc.mongodb.net:27017,ac-ef51p8d-shard-00-01.kpyedqc.mongodb.net:27017,ac-ef51p8d-shard-00-02.kpyedqc.mongodb.net:27017/?ssl=true&replicaSet=atlas-s4gpxc-shard-0&authSource=admin&appName=reels';
 
+const ASSETS_DIR = path.join(__dirname, '..', 'cartoon-reel-frontend', 'public', 'assets');
+
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ Connected to MongoDB Atlas'))
+  .then(async () => {
+    console.log('✅ Connected to MongoDB Atlas');
+
+    // ── MIGRATION: rewrite old localhost:4000/uploads/... URLs to /assets/bg_X.png ──
+    try {
+      if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+
+      const data = await DbModel.findOne();
+      if (!data || !data.templates) return;
+
+      let changed = false;
+      const updated = data.templates.map((tpl) => {
+        if (!tpl.bg || !tpl.bg.includes('/uploads/')) return tpl;
+
+        // Derive file name from template name
+        const rawName = (tpl.name || tpl.id || 'template').toString().trim();
+        const safeName = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const destName = `bg_${safeName}.png`;
+        const destPath = path.join(ASSETS_DIR, destName);
+
+        // Try to copy the local upload file if it exists
+        try {
+          const oldFilename = tpl.bg.split('/uploads/').pop();
+          const srcPath = path.join(UPLOAD_DIR, oldFilename);
+          if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+            fs.copyFileSync(srcPath, destPath);
+            console.log(`[migration] Copied ${oldFilename} → public/assets/${destName}`);
+          }
+        } catch (e) {
+          console.warn('[migration] Could not copy file:', e.message);
+        }
+
+        changed = true;
+        return { ...tpl, bg: `/assets/${destName}` };
+      });
+
+      if (changed) {
+        await DbModel.findOneAndUpdate({}, { $set: { templates: updated } }, { upsert: true });
+        console.log('[migration] ✅ Updated old upload URLs to /assets/ paths in MongoDB');
+      }
+    } catch (migErr) {
+      console.warn('[migration] Skipped:', migErr.message);
+    }
+  })
   .catch(err => console.error('❌ MongoDB Atlas connection error:', err));
 
 const dbSchema = new mongoose.Schema({
@@ -115,12 +160,40 @@ app.get('/api/health', (_req, res) => {
 
 /**
  * POST /api/upload-image
- * For admin uploading bg images.
+ * Saves admin-uploaded template backgrounds directly into the frontend's
+ * public/assets folder as bg_{templateName}.png so they are served from
+ * the same origin as the app — zero CORS issues on canvas, zero taint.
+ *
+ * Body params:
+ *   image       — the image file (multipart)
+ *   templateName — the template name (e.g. "Benefit") → saved as bg_benefit.png
  */
 app.post('/api/upload-image', upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image provided.' });
-  const url = `${process.env.BACKEND_URL || 'http://localhost:4000'}/uploads/${req.file.filename}`;
-  res.json({ url });
+
+  // Sanitize template name: lowercase, replace spaces/special chars with _
+  const rawName    = (req.body.templateName || '').toString().trim();
+  const safeName   = rawName
+    ? rawName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+    : path.basename(req.file.filename, path.extname(req.file.filename));
+
+  const destName   = `bg_${safeName}.png`;
+
+  // Target: frontend's public/assets directory (served as /assets/bg_X.png)
+  if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+
+  const destPath = path.join(ASSETS_DIR, destName);
+
+  // Copy from multer's temp upload to the assets folder (overwrite if exists)
+  try {
+    fs.copyFileSync(req.file.path, destPath);
+    fs.unlinkSync(req.file.path); // clean up temp file
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to save image: ' + err.message });
+  }
+
+  // Return a same-origin relative URL  — no CORS, no canvas taint
+  res.json({ url: `/assets/${destName}`, filename: destName });
 });
 
 /**
