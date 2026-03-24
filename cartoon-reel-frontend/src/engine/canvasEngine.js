@@ -42,18 +42,31 @@ const ease  = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const rand  = (seed, i) => (Math.sin(seed * 127.1 + i * 311.7) * 43758.5453) % 1;
 
-/* ─── Draw background image (static cover-fit, no Ken Burns) ─── */
+/* ─── Draw background image (static, uncropped with blur letterbox) ─── */
 function drawBg(ctx, W, H, img) {
   if (!img) {
     ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); return;
   }
   ctx.save();
-  // Plain cover-fit — background stays perfectly still
-  const r  = Math.max(W / img.width, H / img.height);
-  const dw = img.width  * r;
-  const dh = img.height * r;
+  
+  // 1. Draw a blurred, zoomed version as a backdrop (fills screen)
+  const coverR = Math.max(W / img.width, H / img.height);
+  const cw = img.width * coverR;
+  const ch = img.height * coverR;
+  const cx = (W - cw) / 2;
+  const cy = (H - ch) / 2;
+  
+  ctx.filter = 'blur(20px) brightness(0.7)';
+  ctx.drawImage(img, cx, cy, cw, ch);
+  
+  // 2. Draw the actual original image uncropped (contain-fit)
+  ctx.filter = 'none';
+  const containR = Math.min(W / img.width, H / img.height);
+  const dw = img.width * containR;
+  const dh = img.height * containR;
   const dx = (W - dw) / 2;
   const dy = (H - dh) / 2;
+  
   ctx.drawImage(img, dx, dy, dw, dh);
   ctx.restore();
 }
@@ -424,7 +437,7 @@ function drawContentSection(ctx, W, H, sec, now, lang) {
     for (let d = 0; d < segs.length; d++) {
       ctx.beginPath();
       ctx.arc(dx, dotY, dotR, 0, Math.PI * 2);
-      ctx.fillStyle = d === segIdx ? hexToRgba(color, 0.9) : 'rgba(255,255,255,0.22)';
+      ctx.fillStyle = d === segIdx ? color : 'rgba(255,255,255,0.22)';
       ctx.fill();
       dx += dotGap;
     }
