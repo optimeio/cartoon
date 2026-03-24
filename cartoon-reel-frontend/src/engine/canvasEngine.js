@@ -1134,6 +1134,7 @@ function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites,
   const charCX = W * posX;
   const charCY = H * posY + bobY;
 
+  ctx.save();
   ctx.translate(charCX, charCY);
   ctx.scale(breathScale, breathScale);
   ctx.globalAlpha = 1;
