@@ -42,27 +42,18 @@ const ease  = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const rand  = (seed, i) => (Math.sin(seed * 127.1 + i * 311.7) * 43758.5453) % 1;
 
-/* ─── Draw background image (cover + Ken Burns) ─────────── */
-function drawBg(ctx, W, H, img, t, kenBurns = 'zoom') {
+/* ─── Draw background image (static cover-fit, no Ken Burns) ─── */
+function drawBg(ctx, W, H, img) {
   if (!img) {
     ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); return;
   }
   ctx.save();
-
-  const scale = kenBurns === 'zoom'
-    ? 1.04 + ease(t) * 0.06          // slow zoom in
-    : 1.08 - ease(t) * 0.06;         // slow zoom out
-
-  const panX = kenBurns === 'pan-r'  ? lerp(0, W * 0.04, ease(t))
-             : kenBurns === 'pan-l'  ? lerp(W * 0.04, 0, ease(t)) : 0;
-
-  // cover-fit
-  const r  = Math.max(W / img.width, H / img.height) * scale;
+  // Plain cover-fit — background stays perfectly still
+  const r  = Math.max(W / img.width, H / img.height);
   const dw = img.width  * r;
   const dh = img.height * r;
-  const dx = (W - dw) / 2 - panX;
+  const dx = (W - dw) / 2;
   const dy = (H - dh) / 2;
-
   ctx.drawImage(img, dx, dy, dw, dh);
   ctx.restore();
 }
@@ -369,7 +360,7 @@ function drawTitleSection(ctx, W, H, sec, now, lang) {
   ctx.restore();
 }
 
-/* ── Content Section (center, segmented 1s–12s) ─────────── */
+// drawContentSection: splits on | for manual segments, then auto-segments long text
 function drawContentSection(ctx, W, H, sec, now, lang) {
   const txt = (sec?.text || '').trim();
   if (!txt) return;
@@ -383,7 +374,14 @@ function drawContentSection(ctx, W, H, sec, now, lang) {
 
   const relNow  = now - START;
   const relDur  = END - START;
-  const segs    = segmentText(txt);
+
+  // Manual | splits take priority, else auto-segment
+  let segs;
+  if (txt.includes('|')) {
+    segs = txt.split('|').map(s => s.trim()).filter(Boolean);
+  } else {
+    segs = segmentText(txt);
+  }
   if (!segs.length) return;
 
   const segDur  = relDur / segs.length;
@@ -417,7 +415,7 @@ function drawContentSection(ctx, W, H, sec, now, lang) {
   const lines  = wrapTextLines(ctx, segs[segIdx], maxW);
   const totalH = lines.length * lh;
 
-  // Pagination dots
+  // Slide indicator dots
   if (segs.length > 1) {
     const dotR = 3, dotGap = dotR * 3.5;
     const dotTotalW = segs.length * dotGap - dotGap + dotR * 2;
@@ -1095,7 +1093,7 @@ function drawHandGesture(ctx, W, H, now, animationEnabled) {
 }
 
 /* ── CHARACTER SETTINGS ── */
-function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled = true) {
+function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled = true, charPosition = null) {
   let sprite = null;
 
   // Determine sprite source - user uploads override built-ins
@@ -1121,37 +1119,37 @@ function drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites,
     sprite = getImage(`${charKey}_${frameIdx}`);
   }
 
-  // Gentle idle bob + breathe — character stays anchored bottom-right
+  // Gentle idle bob + breathe
   const bobY        = animationEnabled ? Math.sin(now * Math.PI * 2.5) * (H * 0.012) : 0;
   const breathScale = animationEnabled ? 1 + Math.sin(now * Math.PI * 1.2) * 0.018   : 1;
 
-  // Position: bottom-right, slightly inset
-  const charCX = W * 0.72;
-  const charCY = H * 0.78 + bobY;
+  // Use user-set position (fractional) or default bottom-right
+  const posX = charPosition?.x ?? 0.72;
+  const posY = charPosition?.y ?? 0.78;
+  const charCX = W * posX;
+  const charCY = H * posY + bobY;
 
-  // Draw character sprite
   ctx.save();
   ctx.translate(charCX, charCY);
   ctx.scale(breathScale, breathScale);
   ctx.globalAlpha = 1;
 
   if (sprite && sprite.complete && sprite.naturalWidth > 0) {
-    const sh = H * 0.38; // smaller — just lower body visible
+    const sh = H * 0.38;
     const sw = sprite.width * (sh / sprite.height);
     ctx.drawImage(sprite, -sw / 2, -sh / 2, sw, sh);
   } else {
-    // Loading placeholder
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
     const sh = H * 0.38; const sw = sh * 0.6;
     ctx.fillRect(-sw/2, -sh/2, sw, sh);
   }
   ctx.restore();
 
-  // Draw the animated hand gesture pointing toward text
+  // Hand gesture points from character position toward text area
   drawHandGesture(ctx, W, H, now, animationEnabled);
 }
 
-export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en') {
+export function drawFrame(canvas, now, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const W = canvas.width, H = canvas.height;
   const sceneList = template.scenes || Array(5).fill({ type: 'generic', duration: 3 });
@@ -1184,9 +1182,6 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
       kb_custom_bg_cache[template.bg] = img;
     }
   }
-
-  // Ken Burns mode cycles through scenes
-  const kbMode = KB_MODE[sceneIdx % KB_MODE.length];
 
   // ── 1. Draw Background ─────────────────────────────────────────────
   ctx.save();
@@ -1243,21 +1238,21 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(0, 0, W, H);
   } else {
-    drawBg(ctx, W, H, img, sceneT, kbMode);
+    drawBg(ctx, W, H, img);
   }
   ctx.restore();
 
-  // 2. Scene overlay (Particles, color grading, which act as mid/foreground)
+  // 2. Scene overlay
   ctx.save();
   const renderer = SCENES[activeScene.type];
   if (renderer) renderer(ctx, W, H, sceneT, template, now, text);
   else colorGrade(ctx, W, H, 'rgba(0,0,0,0.3)', 1);
   ctx.restore();
 
-  // 3. Draw Character Sprite Layer
+  // 3. Draw Character Sprite Layer (pass charPosition)
   const hasUserSprites = customSprites && customSprites.some(s => s);
   if ((template.category === 'cartoon' && !hasUserSprites) || hasUserSprites) {
-    drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled);
+    drawCharacterSprite(ctx, W, H, now, mainBgKey, template, customSprites, animationEnabled, charPosition);
   }
 
   // 4. Draw text — use sections if any section has content, else legacy text
@@ -1283,11 +1278,11 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   }
 }
 
-export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en') {
+export function startPreviewRender(canvas, template, text, customSprites = [], animationEnabled = true, customMedia = null, customMediaCrop = null, sections = null, lang = 'en', charPosition = null) {
   let start = null, raf = null;
   const tick = (ts) => {
     if (!start) start = ts;
-    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, lang);
+    drawFrame(canvas, ((ts - start) / 1000) % 15, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, lang, charPosition);
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);

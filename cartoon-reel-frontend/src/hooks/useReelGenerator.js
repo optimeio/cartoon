@@ -32,7 +32,7 @@ export function useReelGenerator() {
 
   const generate = useCallback(async () => {
     const { state, startLoading, setLoadingStep, finishReel, setError } = store;
-    const { text, templateId, musicFile, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language } = state;
+    const { text, templateId, musicFile, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition } = state;
 
     // ── Validate input ────────────────────────────────────
     const hasContent = sections
@@ -148,7 +148,7 @@ export function useReelGenerator() {
           // Render one frame per tick
           if (frame < TOTAL_FRAMES) {
             const nowSec = frame / FPS;
-            drawFrame(canvas, nowSec, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language);
+            drawFrame(canvas, nowSec, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition);
             frame++;
           } else {
             // All frames rendered — stop recording

@@ -187,9 +187,9 @@ function CustomMediaSection() {
 
 export default function CreateScreen() {
   const {
-    state, setText, setError, goHome, setCustomSprite, toggleAnimation,
+    state, setError, goHome, setCustomSprite, toggleAnimation,
     setCustomMedia, setCustomMediaCrop, removeCustomMedia,
-    setSectionText, setSectionStyle, setLanguage,
+    setSectionText, setSectionStyle, setLanguage, setCharPosition
   } = useReelStore();
   const { generate } = useReelGenerator();
   const [category, setCategory] = useState('cartoon');
@@ -359,6 +359,36 @@ export default function CreateScreen() {
                 ? '✨ Frames will animate with cinematic motion. Leave empty to animate the banner background instead.'
                 : '🖼️ Static mode — uploaded frames display as a still image without motion effects.'}
             </p>
+
+            {/* Character Position Selector */}
+            <div style={{ marginTop: '1rem', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff', marginBottom: '0.5rem' }}>Position the Character</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {[
+                  { label: 'Bottom Left', val: { x: 0.28, y: 0.78 } },
+                  { label: 'Bottom Center', val: { x: 0.5, y: 0.78 } },
+                  { label: 'Bottom Right', val: { x: 0.72, y: 0.78 } },
+                  { label: 'Top Left', val: { x: 0.28, y: 0.28 } },
+                  { label: 'Top Right', val: { x: 0.72, y: 0.28 } },
+                ].map(pos => {
+                  const isActive = state.charPosition.x === pos.val.x && state.charPosition.y === pos.val.y;
+                  return (
+                    <button
+                      key={pos.label}
+                      onClick={() => setCharPosition(pos.val)}
+                      style={{
+                        background: isActive ? 'var(--accent-purple)' : 'rgba(255,255,255,0.05)',
+                        border: 'none', borderRadius: 6, padding: '0.3rem 0.6rem',
+                        fontSize: '0.7rem', fontWeight: isActive ? 700 : 500, color: '#fff',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                    >
+                      {pos.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </motion.section>
         )}
 
