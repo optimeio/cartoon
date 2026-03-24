@@ -44,15 +44,18 @@ const rand  = (seed, i) => (Math.sin(seed * 127.1 + i * 311.7) * 43758.5453) % 1
 
 /* ─── Draw background image (static, uncropped with blur letterbox) ─── */
 function drawBg(ctx, W, H, img) {
-  if (!img) {
+  if (!img || !img.complete || img.naturalWidth === 0) {
     ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); return;
   }
   ctx.save();
   
+  const nw = img.naturalWidth;
+  const nh = img.naturalHeight;
+
   // 1. Draw a blurred, zoomed version as a backdrop (fills screen)
-  const coverR = Math.max(W / img.width, H / img.height);
-  const cw = img.width * coverR;
-  const ch = img.height * coverR;
+  const coverR = Math.max(W / nw, H / nh);
+  const cw = nw * coverR;
+  const ch = nh * coverR;
   const cx = (W - cw) / 2;
   const cy = (H - ch) / 2;
   
@@ -61,9 +64,9 @@ function drawBg(ctx, W, H, img) {
   
   // 2. Draw the actual original image uncropped (contain-fit)
   ctx.filter = 'none';
-  const containR = Math.min(W / img.width, H / img.height);
-  const dw = img.width * containR;
-  const dh = img.height * containR;
+  const containR = Math.min(W / nw, H / nh);
+  const dw = nw * containR;
+  const dh = nh * containR;
   const dx = (W - dw) / 2;
   const dy = (H - dh) / 2;
   
