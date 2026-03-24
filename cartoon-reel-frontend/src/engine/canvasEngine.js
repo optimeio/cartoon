@@ -20,19 +20,23 @@ const custom_sprite_cache = {};
 export function preloadTemplateBg(template) {
   return new Promise((resolve) => {
     if (!template?.isCustom || !template?.bg) return resolve();
-    if (kb_custom_bg_cache[template.bg]) return resolve();
 
+    // Already fully loaded — use it immediately
+    const cached = kb_custom_bg_cache[template.bg];
+    if (cached && cached.complete && cached.naturalWidth > 0) return resolve();
+
+    // Start a fresh load (no crossOrigin — avoids canvas CORS taint)
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => {
       kb_custom_bg_cache[template.bg] = img;
       resolve();
     };
     img.onerror = () => {
       console.warn('[canvasEngine] Failed to preload custom background:', template.bg);
-      resolve();
+      resolve(); // don't block generation
     };
     img.src = template.bg;
+    kb_custom_bg_cache[template.bg] = img; // mark as in-flight
   });
 }
 
@@ -1192,15 +1196,20 @@ export function drawFrame(canvas, now, template, text, customSprites = [], anima
   const mainBgKey = TEMPLATE_BG[template.id] || 'shinchan';
   let img = getImage(mainBgKey);
 
-  // If Admin assigned a remote dynamic background URL, use on-the-fly crossOrigin caching
+  // If Admin assigned a remote dynamic background URL, use on-the-fly caching
   if (template.isCustom && template.bg) {
-    if (kb_custom_bg_cache[template.bg]) {
-      img = kb_custom_bg_cache[template.bg];
+    const cached = kb_custom_bg_cache[template.bg];
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      img = cached;
+    } else if (!cached) {
+      // First time seen: fire off the load (no crossOrigin to avoid CORS canvas taint)
+      const fresh = new Image();
+      fresh.onload = () => { kb_custom_bg_cache[template.bg] = fresh; };
+      fresh.onerror = () => { console.warn('[canvasEngine] Could not load admin bg:', template.bg); };
+      fresh.src = template.bg;
+      kb_custom_bg_cache[template.bg] = fresh; // store even while loading so we only fire once
     } else {
-      img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = template.bg;
-      kb_custom_bg_cache[template.bg] = img;
+      img = null; // still loading — drawBg will show #111 placeholder
     }
   }
 
