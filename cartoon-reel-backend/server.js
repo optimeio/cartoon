@@ -18,6 +18,7 @@ const fs       = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const ffmpeg   = require('fluent-ffmpeg');
 const ffmpegBin = require('ffmpeg-static');
+const mongoose  = require('mongoose');
 
 /* ── FFmpeg binary path ─────────────────────────────────── */
 ffmpeg.setFfmpegPath(ffmpegBin);
@@ -48,7 +49,7 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static directory for Admin-uploaded template backgrounds
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// DB Path
+// DB Path (used only for initial migration if MongoDB empty)
 const DB_PATH = path.join(__dirname, 'data', 'db.json');
 
 /* ── Multer storage ─────────────────────────────────────── */
@@ -87,6 +88,20 @@ function scheduleCleanup(filePath, delayMs = 5 * 60 * 1000) {
   setTimeout(() => cleanupFile(filePath), delayMs);
 }
 
+/* ── MongoDB Atlas Connection ───────────────────────────── */
+const MONGO_URI = 'mongodb://Nithyashree:nithya123@ac-ef51p8d-shard-00-00.kpyedqc.mongodb.net:27017,ac-ef51p8d-shard-00-01.kpyedqc.mongodb.net:27017,ac-ef51p8d-shard-00-02.kpyedqc.mongodb.net:27017/?ssl=true&replicaSet=atlas-s4gpxc-shard-0&authSource=admin&appName=reels';
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('✅ Connected to MongoDB Atlas'))
+  .catch(err => console.error('❌ MongoDB Atlas connection error:', err));
+
+const dbSchema = new mongoose.Schema({
+  categories: { type: Array, default: [] },
+  templates: { type: Array, default: [] }
+}, { strict: false });
+
+const DbModel = mongoose.model('ReelData', dbSchema);
+
 /* ── Routes ─────────────────────────────────────────────── */
 
 /** Health check */
@@ -105,19 +120,48 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
 });
 
 /**
- * DB Routes (Categories & Templates)
+ * DB Routes (Categories & Templates backed by MongoDB)
  */
-app.get('/api/db', (req, res) => {
-  if (!fs.existsSync(DB_PATH)) return res.json({ categories: [], templates: [] });
-  res.json(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+app.get('/api/db', async (req, res) => {
+  try {
+    let data = await DbModel.findOne();
+    if (!data) {
+      if (fs.existsSync(DB_PATH)) {
+        console.log('Migrating initial db.json to MongoDB Atlas...');
+        const localData = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+        data = await DbModel.create({
+          categories: localData.categories || [],
+          templates: localData.templates || []
+        });
+      } else {
+        data = { categories: [], templates: [] };
+      }
+    }
+    res.json(data);
+  } catch (err) {
+    console.error('Fetch DB error:', err);
+    res.status(500).json({ error: 'Failed to fetch from DB' });
+  }
 });
 
-app.post('/api/db', (req, res) => {
+app.post('/api/db', async (req, res) => {
   try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(req.body, null, 2));
+    const payload = req.body;
+    let doc = await DbModel.findOne();
+    if (doc) {
+      doc.categories = payload.categories || [];
+      doc.templates = payload.templates || [];
+      await doc.save();
+    } else {
+      await DbModel.create({
+        categories: payload.categories || [],
+        templates: payload.templates || []
+      });
+    }
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to write DB' });
+    console.error('Update DB error:', err);
+    res.status(500).json({ error: 'Failed to write to DB' });
   }
 });
 
