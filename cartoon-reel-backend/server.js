@@ -47,7 +47,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static directory for Admin-uploaded template backgrounds
-app.use('/uploads', express.static(UPLOAD_DIR));
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(UPLOAD_DIR));
 
 // DB Path (used only for initial migration if MongoDB empty)
 const DB_PATH = path.join(__dirname, 'data', 'db.json');
