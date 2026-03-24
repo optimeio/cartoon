@@ -129,48 +129,52 @@ export function useReelGenerator() {
 
       const recorder = new MediaRecorder(recorderStream, {
         mimeType,
-        videoBitsPerSecond: 15_000_000,
+        videoBitsPerSecond: 8_000_000, // 8 Mbps — safe cap supported by all browsers
       });
 
       const chunks = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
-      // ── Render loop ───────────────────────────────────
-      // We use setInterval instead of rAF so rendering speed is not tied
-      // to the tab's visibility or display refresh rate.
-      // 720 frames at ~2ms per frame = ~1.5 seconds of CPU time.
+      // ── Render loop (rAF-based so browser doesn't throttle timing) ──
       await new Promise((resolve, reject) => {
         if (abortRef.current) { reject(new Error('Aborted')); return; }
 
         recorder.onstop  = resolve;
         recorder.onerror = (e) => reject(e.error || new Error('MediaRecorder error'));
-        recorder.start(250); // emit data every 250ms
 
-        if (audioSourceNode) audioSourceNode.start(0);
+        // Pre-draw frame 0 so the canvas stream is never empty when recording starts
+        drawFrame(canvas, 0, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition, charScale, bgScale);
 
-        let frame = 0;
+        // Small delay to ensure captureStream sees the first painted frame
+        setTimeout(() => {
+          recorder.start(200); // emit a chunk every 200ms
+          if (audioSourceNode) audioSourceNode.start(0);
 
-        const intervalId = setInterval(() => {
-          if (abortRef.current) {
-            clearInterval(intervalId);
-            try { recorder.stop(); } catch (_) {}
-            reject(new Error('Aborted'));
-            return;
+          let frame = 0;
+
+          function renderNext() {
+            if (abortRef.current) {
+              try { recorder.requestData(); recorder.stop(); } catch (_) {}
+              reject(new Error('Aborted'));
+              return;
+            }
+
+            if (frame < TOTAL_FRAMES) {
+              const nowSec = frame / FPS;
+              drawFrame(canvas, nowSec, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition, charScale, bgScale);
+              frame++;
+              requestAnimationFrame(renderNext);
+            } else {
+              // All frames done — flush final chunk then stop
+              try { recorder.requestData(); } catch (_) {}
+              setTimeout(() => {
+                try { recorder.stop(); } catch (_) {}
+              }, 300);
+            }
           }
 
-          // Render one frame per tick
-          if (frame < TOTAL_FRAMES) {
-            const nowSec = frame / FPS;
-            drawFrame(canvas, nowSec, template, text, customSprites, animationEnabled, customMedia, customMediaCrop, sections, language, charPosition, charScale, bgScale);
-            frame++;
-          } else {
-            // All frames rendered — stop recording
-            clearInterval(intervalId);
-            setTimeout(() => {
-              try { recorder.stop(); } catch (_) {}
-            }, 400); // small tail to flush final audio
-          }
-        }, 1000 / FPS); // ~41.67ms per frame interval
+          requestAnimationFrame(renderNext);
+        }, 80);
       });
 
       if (abortRef.current) return;
