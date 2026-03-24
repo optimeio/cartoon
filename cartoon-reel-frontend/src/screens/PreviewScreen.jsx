@@ -58,13 +58,38 @@ export default function PreviewScreen() {
     setProgress(0);
   }, []);
 
-  const download = useCallback(() => {
+  const [downloading, setDownloading] = useState(false);
+
+  const download = useCallback(async () => {
     if (!state.reelUrl) return;
-    const a = document.createElement('a');
-    a.href = state.reelUrl;
-    a.download = `cartoon-reel-${template.id}-${Date.now()}.webm`;
-    a.click();
-    showToast('Download started! 🎉');
+    setDownloading(true);
+    showToast('Converting to MP4… ⏳');
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '/api';
+      const blob    = await fetch(state.reelUrl).then((r) => r.blob());
+      const fd      = new FormData();
+      fd.append('video', blob, 'reel.webm');
+      const res = await fetch(`${API_URL}/convert-to-mp4`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const mp4Blob = await res.blob();
+      const url     = URL.createObjectURL(mp4Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cartoon-reel-${template.id || 'reel'}-${Date.now()}.mp4`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast('MP4 Downloaded! 🎉');
+    } catch (err) {
+      console.warn('[download] MP4 conversion failed, falling back to WebM:', err.message);
+      // Fallback: direct WebM download
+      const a = document.createElement('a');
+      a.href = state.reelUrl;
+      a.download = `cartoon-reel-${template.id || 'reel'}-${Date.now()}.webm`;
+      a.click();
+      showToast('Downloaded as WebM (MP4 conversion unavailable)');
+    } finally {
+      setDownloading(false);
+    }
   }, [state.reelUrl, template.id]);
 
   const share = useCallback(async () => {
@@ -271,11 +296,14 @@ export default function PreviewScreen() {
           id="download-reel-btn"
           className="btn-primary"
           onClick={download}
-          aria-label="Download reel"
-          style={{ minWidth: 140 }}
+          aria-label="Download reel as MP4"
+          disabled={downloading}
+          style={{ minWidth: 140, opacity: downloading ? 0.75 : 1 }}
         >
-          <Download size={16} />
-          Download
+          {downloading
+            ? <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Converting…</>
+            : <><Download size={16} /> Download MP4</>
+          }
         </button>
       </motion.div>
     </div>
