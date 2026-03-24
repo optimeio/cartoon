@@ -8,6 +8,34 @@
  */
 import { getImage, TEMPLATE_BG } from './imageLoader';
 
+const kb_custom_bg_cache = {};
+const custom_media_cache = {};
+const custom_sprite_cache = {};
+
+
+/**
+ * Preload an Admin custom background image so the Generator loop
+ * doesn't render dark frames while the network fetches the image.
+ */
+export function preloadTemplateBg(template) {
+  return new Promise((resolve) => {
+    if (!template?.isCustom || !template?.bg) return resolve();
+    if (kb_custom_bg_cache[template.bg]) return resolve();
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      kb_custom_bg_cache[template.bg] = img;
+      resolve();
+    };
+    img.onerror = () => {
+      console.warn('[canvasEngine] Failed to preload custom background:', template.bg);
+      resolve();
+    };
+    img.src = template.bg;
+  });
+}
+
 /* ─── Math helpers ─────────────────────────────────────── */
 const lerp  = (a, b, t) => a + (b - a) * t;
 const ease  = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
@@ -72,17 +100,16 @@ function segmentText(text) {
 
   sentences.forEach(sentence => {
     const words = sentence.trim().split(/\s+/);
-    // Break long sentences into 5-word natural phrases
-    const PHRASE_LEN = 5;
+    // Break long sentences into natural phrases
+    const PHRASE_LEN = 8;
     for (let i = 0; i < words.length; i += PHRASE_LEN) {
       const chunk = words.slice(i, i + PHRASE_LEN).join(' ');
       if (chunk.trim()) segments.push(chunk.trim());
     }
   });
 
-  // Clamp: if too many segments, merge small ones until we have at most 15
-  // (at 15s reel, 15 segments = 1s each which is the minimum readable)
-  const MAX_SEGS = 12;
+  // Clamp: limit segments so each segment gets ~1.5 - 2 seconds (11.2s total)
+  const MAX_SEGS = 6;
   while (segments.length > MAX_SEGS) {
     // Find the shortest pair to merge
     let bestIdx = 0, bestLen = Infinity;

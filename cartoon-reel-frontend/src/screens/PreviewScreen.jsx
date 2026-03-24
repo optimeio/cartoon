@@ -5,13 +5,13 @@
  */
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Download, RefreshCw, ChevronLeft, Share2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Download, RefreshCw, ChevronLeft, Share2, Edit2 } from 'lucide-react';
 import { useReelStore } from '../store/useReelStore';
 import TEMPLATES from '../data/templates';
 import Toast from '../components/Toast';
 
 export default function PreviewScreen() {
-  const { state, regenerate, goHome } = useReelStore();
+  const { state, goCreate, goHome } = useReelStore();
   const videoRef = useRef(null);
   const [playing, setPlaying]   = useState(false);
   const [progress, setProgress] = useState(0);
@@ -233,7 +233,7 @@ export default function PreviewScreen() {
         </motion.div>
 
         {/* Text preview badge */}
-        {state.text && (
+        {(state.sections?.title?.text || state.sections?.content?.text || state.sections?.conclusion?.text || state.text) && (
           <motion.div
             className="glass-card"
             style={{ padding: '0.75rem 1rem', maxWidth: 340, width: '100%', textAlign: 'center' }}
@@ -241,8 +241,11 @@ export default function PreviewScreen() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Subtitle text</p>
-            <p style={{ fontWeight: 600, fontSize: '0.875rem', lineHeight: 1.4 }}>"{state.text}"</p>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Subtitle layout</p>
+            {state.sections?.title?.text && <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{state.sections.title.text}</p>}
+            {state.sections?.content?.text && <p style={{ fontSize: '0.8rem', lineHeight: 1.4, margin: '0.2rem 0' }}>{state.sections.content.text.slice(0, 40)}...</p>}
+            {state.sections?.conclusion?.text && <p style={{ fontSize: '0.75rem', color: 'var(--accent-purple)' }}>{state.sections.conclusion.text}</p>}
+            {!state.sections && <p style={{ fontWeight: 600, fontSize: '0.875rem', lineHeight: 1.4 }}>"{state.text}"</p>}
           </motion.div>
         )}
       </div>
@@ -257,12 +260,12 @@ export default function PreviewScreen() {
         <button
           id="regenerate-btn"
           className="btn-secondary"
-          onClick={regenerate}
-          aria-label="Regenerate reel"
+          onClick={goCreate}
+          aria-label="Edit reel details"
           style={{ gap: '0.4rem' }}
         >
-          <RefreshCw size={15} />
-          Regenerate
+          <Edit2 size={15} />
+          Edit Reel
         </button>
         <button
           id="download-reel-btn"

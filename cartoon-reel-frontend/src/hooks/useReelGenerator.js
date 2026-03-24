@@ -11,7 +11,7 @@
  */
 import { useCallback, useRef } from 'react';
 import { useReelStore } from '../store/useReelStore';
-import { drawFrame } from '../engine/canvasEngine';
+import { drawFrame, preloadTemplateBg } from '../engine/canvasEngine';
 
 export const LOADING_STEPS = [
   'Understanding your idea...',
@@ -53,8 +53,10 @@ export function useReelGenerator() {
       setLoadingStep(0);
       if (abortRef.current) return;
 
-      // ── Step 1 – Preparing scenes ─────────────────────
+      // ── Step 1 – Preparing scenes & Assets ────────────
       setLoadingStep(1);
+      if (abortRef.current) return;
+      await preloadTemplateBg(template);
       if (abortRef.current) return;
 
       // ── Step 2 – Rendering animation ──────────────────
@@ -78,7 +80,7 @@ export function useReelGenerator() {
 
       if (musicFile) {
         try {
-          setLoadingStep('Uploading music...');
+          // Keeping at step 2 or 1 so percentage calculation doesn't break into NaN%
           const fdMusic = new FormData();
           fdMusic.append('music', musicFile);
           const resM = await fetch(`${API_URL}/upload-music`, { method: 'POST', body: fdMusic });
